@@ -1,14 +1,16 @@
-import './App.css'
+import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import AppRoutes from './routes/index.jsx';
+import './App.css';
 
 function App() {
-
   return (
-    <>
-      <div className='text-red-500'>
-        hello world
-      </div>
-    </>
-  )
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
