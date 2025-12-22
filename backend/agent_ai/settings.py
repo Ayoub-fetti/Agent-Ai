@@ -128,3 +128,6 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+OPEN_ROUTER_API_KEY = config('OPEN_ROUTER_API_KEY')
+
