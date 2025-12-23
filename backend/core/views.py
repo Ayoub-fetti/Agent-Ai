@@ -169,3 +169,51 @@ def pending_analyses(request):
     ).select_related('ticket')
     
     return Response(TicketAnalysisSerializer(analyses, many=True).data)
+
+from .models import TicketAnalysis
+from .serializers import TicketAnalysisSerializer
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ticket_detail(request, ticket_id):
+    try:
+        ticket = Ticket.objects.get(zammad_id=ticket_id)
+        analysis = getattr(ticket, 'analysis', None)
+        return Response({
+            'ticket': TicketSerializer(ticket).data,
+            'analysis': TicketAnalysisSerializer(analysis).data if analysis else None
+        })
+    except Ticket.DoesNotExist:
+        return Response({'error': 'Ticket non trouvé'}, status=404)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_ai_response(request, analysis_id):
+    try:
+        analysis = TicketAnalysis.objects.get(id=analysis_id)
+        analysis.ai_response = request.data.get('ai_response', analysis.ai_response)
+        analysis.save()
+        return Response(TicketAnalysisSerializer(analysis).data)
+    except TicketAnalysis.DoesNotExist:
+        return Response({'error': 'Analyse non trouvée'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def validate_response(request, analysis_id):
+    try:
+        analysis = TicketAnalysis.objects.get(id=analysis_id)
+        analysis.published = True
+        analysis.save()
+        return Response({'message': 'Réponse validée'})
+    except TicketAnalysis.DoesNotExist:
+        return Response({'error': 'Analyse non trouvée'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_to_zammad(request, analysis_id):
+    try:
+        analysis = TicketAnalysis.objects.get(id=analysis_id)
+        # Logique d'envoi vers Zammad
+        return Response({'message': 'Envoyé vers Zammad'})
+    except TicketAnalysis.DoesNotExist:
+        return Response({'error': 'Analyse non trouvée'}, status=404)
