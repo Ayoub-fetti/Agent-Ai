@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import User
 from .models import User, Ticket
+from .models import TicketAnalysis
 
 
 class LoginSerializer(serializers.Serializer):
@@ -32,3 +33,9 @@ class TicketSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = '__all__'
 
+
+class TicketAnalysisSerializer(serializers.ModelSerializer):
+    ticket = TicketSerializer(read_only=True)
+    class Meta:
+        model = TicketAnalysis
+        fields = '__all__'
