@@ -124,3 +124,48 @@ def mark_ticket_processed(request, ticket_id):
         return Response({'message': 'Ticket marqué comme traité'})
     except Ticket.DoesNotExist:
         return Response({'error': 'Ticket non trouvé'}, status=404)
+# Ajout aux views.py
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def analyze_ticket(request, ticket_id):
+    """Analyser un ticket avec l'IA"""
+    try:
+        ticket = Ticket.objects.get(zammad_id=ticket_id)
+        analyzer = TicketAnalyzerService()
+        result = analyzer.analyze_ticket(ticket)
+        
+        if result['success']:
+            return Response({
+                'message': 'Analyse terminée',
+                'analysis': TicketAnalysisSerializer(result['analysis']).data
+            })
+        else:
+            return Response({'error': result['error']}, status=400)
+            
+    except Ticket.DoesNotExist:
+        return Response({'error': 'Ticket non trouvé'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def publish_analysis(request, analysis_id):
+    """Publier une analyse sur Zammad"""
+    try:
+        analysis = TicketAnalysis.objects.get(id=analysis_id)
+        analyzer = TicketAnalyzerService()
+        result = analyzer.publish_to_zammad(analysis)
+        
+        return Response(result)
+        
+    except TicketAnalysis.DoesNotExist:
+        return Response({'error': 'Analyse non trouvée'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pending_analyses(request):
+    """Lister les analyses en attente de validation"""
+    analyses = TicketAnalysis.objects.filter(
+        publish_mode='suggestion',
+        published=False
+    ).select_related('ticket')
+    
+    return Response(TicketAnalysisSerializer(analyses, many=True).data)
