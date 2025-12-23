@@ -130,4 +130,8 @@ LOGGING = {
 }
 
 OPEN_ROUTER_API_KEY = config('OPEN_ROUTER_API_KEY')
+# Configuration Zammad
+ZAMMAD_TOKEN = config('TOKEN_ZAMMAD')
+ZAMMAD_URL = config('URL_ZAMMAD')
+
 
