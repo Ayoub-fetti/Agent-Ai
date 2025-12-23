@@ -29,3 +29,24 @@ class Ticket(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+class TicketAnalysis(models.Model):
+    class Priority(models.TextChoices):
+        LOW = "low", "Faible"
+        MEDIUM = "medium", "Moyenne"
+        HIGH = "high", "Élevée"
+        URGENT = "urgent", "Urgente"
+    
+    class PublishMode(models.TextChoices):
+        SUGGESTION = "suggestion", "Suggestion"
+        AUTO = "auto", "Automatique"
+    
+    ticket = models.OneToOneField(Ticket, on_delete=models.CASCADE, related_name='analysis')
+    intention = models.CharField(max_length=255)
+    category = models.CharField(max_length=100)
+    priority = models.CharField(max_length=20, choices=Priority.choices)
+    ai_response = models.TextField()
+    publish_mode = models.CharField(max_length=20, choices=PublishMode.choices, default=PublishMode.SUGGESTION)
+    published = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+       
