@@ -8,6 +8,10 @@ from django.contrib.auth import authenticate
 from .models import User
 from .serializers import LoginSerializer, UserSerializer, CreateUserSerializer
 from .permissions import IsAdmin
+from .services.zammad_sync import ZammadSyncService
+from .models import User, Ticket
+from .serializers import LoginSerializer, UserSerializer, CreateUserSerializer, TicketSerializer
+
 
 @api_view(['GET'])
 def health_check(request):
@@ -95,3 +99,28 @@ def reset_password(request, user_id):
         return Response({'message': 'Password reset successful'})
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sync_tickets(request):
+    sync_service = ZammadSyncService()
+    count = sync_service.sync_new_tickets()
+    return Response({'synced': count})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_tickets(request):
+    tickets = Ticket.objects.filter(processed=False)[:20]
+    serializer = TicketSerializer(tickets, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_ticket_processed(request, ticket_id):
+    try:
+        ticket = Ticket.objects.get(zammad_id=ticket_id)
+        ticket.processed = True
+        ticket.save()
+        return Response({'message': 'Ticket marqué comme traité'})
+    except Ticket.DoesNotExist:
+        return Response({'error': 'Ticket non trouvé'}, status=404)
