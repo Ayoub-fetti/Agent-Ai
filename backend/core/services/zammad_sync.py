@@ -15,7 +15,15 @@ class ZammadSyncService:
             tickets_data = self.api.get_tickets()
             synced_count = 0
             
+            logger.info(f"Received {len(tickets_data)} tickets from API")
+            
             for ticket_data in tickets_data:
+                state = str(ticket_data.get('state', '')).lower()
+                logger.info(f"Ticket {ticket_data.get('id')}: state={state}")
+                
+                if state in ['closed', 'fermé']:
+                    continue
+                    
                 if not Ticket.objects.filter(zammad_id=ticket_data['id']).exists():
                     ticket = self._map_zammad_to_model(ticket_data)
                     ticket.save()

@@ -86,24 +86,37 @@ class TicketAnalyzerService:
     def _generate_response(self, ticket: Ticket, analysis: Dict[str, Any]) -> str:
         """Générer réponse IA"""
         prompt = f"""
-        Génère une réponse professionnelle pour ce ticket:
+        Analyse ce ticket de support et génère une réponse spécifique et personnalisée:
         
-        Problème: {ticket.title}
-        Détails: {ticket.body}
-        Catégorie: {analysis['category']}
-        Priorité: {analysis['priority']}
+        TICKET À ANALYSER:
+        - Titre: "{ticket.title}"
+        - Contenu: "{ticket.body}"
+        - Catégorie détectée: {analysis['category']}
+        - Priorité: {analysis['priority']}
         
-        La réponse doit être:
-        - Professionnelle et courtoise
-        - Adaptée à la catégorie du problème
-        - Avec des étapes concrètes si nécessaire
+        INSTRUCTIONS:
+        - Réponds DIRECTEMENT au problème mentionné dans le ticket
+        - Sois spécifique au contenu du ticket, pas générique
+        - Propose des solutions concrètes basées sur le titre et le contenu
+        - Utilise un ton professionnel mais direct
+        - Maximum 200 mots
+        
+        Format HTML simple avec:
+        <h3 class="text-blue-600 font-bold text-lg mb-2">Réponse à votre demande</h3>
+        <p>Contenu personnalisé basé sur le ticket...</p>
+        <h4 class="text-red-600 font-bold text-base mt-4 mb-2">Solution proposée:</h4>
+        <ul class="ml-4"><li>Étapes spécifiques...</li></ul>
+
+        
+        NE génère PAS de template générique. Analyse le contenu réel du ticket.
         """
         
-        system_prompt = "Tu es un agent de support expert. Génère une réponse claire et utile."
+        system_prompt = """Tu es un expert technique. Analyse le ticket et donne une réponse SPÉCIFIQUE au problème mentionné. 
+        Évite les réponses génériques. Sois direct et utile."""
         
         result = self.llm_client.call_api(prompt, system_prompt)
         return result['content'] if result['success'] else "Réponse automatique en cours de génération."
-    
+
     def _save_analysis(self, ticket: Ticket, analysis: Dict[str, Any], ai_response: str) -> TicketAnalysis:
         """6.2 Stockage résultats IA"""
         analysis_obj, created = TicketAnalysis.objects.get_or_create(
