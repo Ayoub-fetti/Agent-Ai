@@ -11,6 +11,8 @@ from .permissions import IsAdmin
 from .services.zammad_sync import ZammadSyncService
 from .models import User, Ticket
 from .serializers import LoginSerializer, UserSerializer, CreateUserSerializer, TicketSerializer
+from .services.zammad_api import ZammadAPIService
+from django.utils import timezone
 
 
 @api_view(['GET'])
@@ -110,9 +112,10 @@ def sync_tickets(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_tickets(request):
-    tickets = Ticket.objects.filter(processed=False)[:20]
-    serializer = TicketSerializer(tickets, many=True)
-    return Response(serializer.data)
+    api = ZammadAPIService()
+    tickets = api.get_tickets()
+    return Response(tickets)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -176,15 +179,9 @@ from .serializers import TicketAnalysisSerializer
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def ticket_detail(request, ticket_id):
-    try:
-        ticket = Ticket.objects.get(zammad_id=ticket_id)
-        analysis = getattr(ticket, 'analysis', None)
-        return Response({
-            'ticket': TicketSerializer(ticket).data,
-            'analysis': TicketAnalysisSerializer(analysis).data if analysis else None
-        })
-    except Ticket.DoesNotExist:
-        return Response({'error': 'Ticket non trouvé'}, status=404)
+    api = ZammadAPIService()
+    ticket = api.get_ticket_details(ticket_id)
+    return Response(ticket)
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
@@ -217,3 +214,59 @@ def send_to_zammad(request, analysis_id):
         return Response({'message': 'Envoyé vers Zammad'})
     except TicketAnalysis.DoesNotExist:
         return Response({'error': 'Analyse non trouvée'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ticket_detail(request, ticket_id):
+    api = ZammadAPIService()
+    ticket = api.get_ticket_details(ticket_id)
+    articles = api.get_ticket_articles(ticket_id)
+    return Response({
+        'ticket': ticket,
+        'articles': articles
+    })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def analyze_ticket_from_zammad(request, ticket_id):
+    try:
+        # Get ticket from Zammad
+        api = ZammadAPIService()
+        ticket_data = api.get_ticket_details(ticket_id)
+        articles = api.get_ticket_articles(ticket_id)
+        
+        # Create or get ticket in database
+        ticket, created = Ticket.objects.get_or_create(
+            zammad_id=ticket_data['id'],
+            defaults={
+                'title': ticket_data['title'],
+                'body': articles[0]['body'] if articles else '',
+                'status': 'open',
+                'customer_email': '',
+                'created_at': timezone.now(),
+                'updated_at': timezone.now()
+            }
+        )
+        
+        # Analyze with AI
+        from .services.ticket_analyzer import TicketAnalyzerService
+        analyzer = TicketAnalyzerService()
+        result = analyzer.analyze_ticket(ticket)
+        
+        if result['success']:
+            # Serialize the analysis object
+            analysis_data = {
+                'intention': result['analysis'].intention,
+                'category': result['analysis'].category,
+                'priority': result['analysis'].priority,
+                'ai_response': result['analysis'].ai_response,
+            }
+            return Response({
+                'success': True,
+                'analysis': analysis_data
+            })
+        else:
+            return Response(result)
+            
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)

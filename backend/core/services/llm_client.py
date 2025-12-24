@@ -15,11 +15,9 @@ class LLMClient:
         self.timeout = 30
         self.max_retries = 3
     
-    def call_api(self, prompt: str, system_prompt: str = "", model: str = "meta-llama/llama-3.1-8b-instruct:free") -> Dict[str, Any]:
+    def call_api(self, prompt: str, system_prompt: str = "", model: str = "meta-llama/llama-3.2-3b-instruct:free") -> Dict[str, Any]:
         for attempt in range(self.max_retries):
             try:
-                start_time = time.time()
-                
                 payload = {
                     "model": model,
                     "messages": [
@@ -32,7 +30,9 @@ class LLMClient:
                     self.api_url,
                     headers={
                         "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "http://localhost:8000",
+                        "X-Title": "Agent-AI"
                     },
                     json=payload,
                     timeout=self.timeout
@@ -41,18 +41,15 @@ class LLMClient:
                 response.raise_for_status()
                 result = response.json()
                 
-                duration = time.time() - start_time
-                logger.info(f"OpenRouter API - {duration:.2f}s")
-                
                 return {
                     "success": True,
                     "content": result["choices"][0]["message"]["content"]
                 }
                 
             except Exception as e:
-                logger.error(f"API error attempt {attempt + 1}: {str(e)}")
+                logger.error(f"API error: {str(e)}")
                 if attempt == self.max_retries - 1:
                     return {"success": False, "error": str(e)}
-                time.sleep(2 ** attempt)
+                time.sleep(2)
         
         return {"success": False, "error": "Max retries exceeded"}
