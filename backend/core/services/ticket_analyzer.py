@@ -42,18 +42,28 @@ class TicketAnalyzerService:
     
     def _send_to_llm(self, ticket: Ticket) -> Dict[str, Any]:
         """Envoi du contenu ticket au LLM"""
+        
+        # Récupérer tous les articles du ticket
+        try:
+            articles = self.zammad_api.get_ticket_articles(ticket.zammad_id)
+            full_content = self._build_full_content(ticket, articles)
+        except Exception as e:
+            logger.warning(f"Impossible de récupérer les articles: {e}")
+            full_content = ticket.body
+        
         prompt = f"""
-        Analyse ce ticket de support et réponds en JSON:
+        Analyse ce ticket de support COMPLET et réponds en JSON:
         
         Titre: {ticket.title}
-        Contenu: {ticket.body}
+        Conversation complète:
+        {full_content}
         Client: {ticket.customer_email}
         
         Format de réponse JSON requis:
         {{
             "intention": "description de l'intention du client",
-            "category": "technique|commercial|facturation|autre",
-            "priority": "low|medium|high|urgent",
+            "category": "technique|commercial|facturation|autre", 
+            "priority": "low|medium|high",
             "estimated_time": "temps estimé en minutes"
         }}
         """
@@ -61,6 +71,19 @@ class TicketAnalyzerService:
         system_prompt = "Tu es un expert en analyse de tickets de support. Réponds uniquement en JSON valide."
         
         return self.llm_client.call_api(prompt, system_prompt)
+
+    def _build_full_content(self, ticket: Ticket, articles: list) -> str:
+        """Construire le contenu complet avec tous les articles"""
+        content_parts = [f"Message initial: {ticket.body}"]
+        
+        for article in articles:
+            sender = article.get('from', 'Inconnu')
+            body = article.get('body', '').strip()
+            if body and body != ticket.body:  # Éviter les doublons
+                content_parts.append(f"[{sender}]: {body}")
+        
+        return "\n\n".join(content_parts)
+
     
     def _parse_analysis(self, llm_response: str) -> Dict[str, Any]:
         """Détecter intention et classifier ticket"""
