@@ -39,27 +39,38 @@ const TicketDetail = () => {
 
       {analysis && (
         <div className="bg-gray-100 p-4 rounded mb-4">
-          <h3 className="font-bold mb-2">Analyse IA:</h3>
+
+          <h3 className="font-bold mb-3">Analyse IA</h3>
+
           <div className="grid grid-cols-3 gap-4 mb-4">
-            <div>
-              <strong>Intention:</strong> {analysis.intention}
-            </div>
-            <div>
-              <strong>Catégorie:</strong> {analysis.category}
-            </div>
-            <div>
-              <strong>Priorité:</strong> {analysis.priority}
-            </div>
+            <div><strong>Intention:</strong> {analysis.intention}</div>
+            <div><strong>Catégorie:</strong> {analysis.category}</div>
+            <div><strong>Priorité:</strong> {analysis.priority}</div>
           </div>
-          <div className="mt-4">
-            <strong>Réponse suggérée:</strong>
-            <div
-              className="bg-white p-4 rounded mt-2 prose max-w-none"
-              dangerouslySetInnerHTML={{ __html: analysis.ai_response }}
-            />
+
+          {/* Réponse */}
+          <div className="bg-white p-4 rounded mb-4 border-l-4 border-blue-500">
+            <h4 className="font-semibold mb-2 text-blue-700">
+              Réponse à votre demande
+            </h4>
+            <p>{analysis.ai_response.response}</p>
           </div>
+
+          {/* Solution */}
+          <div className="bg-white p-4 rounded border-l-4 border-green-500">
+            <h4 className="font-semibold mb-2 text-green-700">
+              Solution proposée
+            </h4>
+            <ul className="list-disc ml-5 space-y-1">
+              {analysis.ai_response.solution.map((step, index) => (
+                <li key={index}>{step}</li>
+              ))}
+            </ul>
+          </div>
+
         </div>
       )}
+
 
       <div className="mb-6">
         <p>

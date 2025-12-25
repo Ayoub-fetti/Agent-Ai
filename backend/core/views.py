@@ -110,7 +110,7 @@ def sync_tickets(request):
     return Response({'synced': count})
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])  # Changé de IsAuthenticated à AllowAny
 def list_tickets(request):
     api = ZammadAPIService()
     tickets = api.get_tickets()
@@ -177,12 +177,15 @@ from .models import TicketAnalysis
 from .serializers import TicketAnalysisSerializer
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])  # Changé de IsAuthenticated à AllowAny
 def ticket_detail(request, ticket_id):
     api = ZammadAPIService()
     ticket = api.get_ticket_details(ticket_id)
-    return Response(ticket)
-
+    articles = api.get_ticket_articles(ticket_id)
+    return Response({
+        'ticket': ticket,
+        'articles': articles
+    })
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def update_ai_response(request, analysis_id):
@@ -226,8 +229,8 @@ def ticket_detail(request, ticket_id):
         'articles': articles
     })
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@api_view(['GET', 'POST'])  # Ajouté GET
+@permission_classes([AllowAny])  # Changé de IsAuthenticated à AllowAny
 def analyze_ticket_from_zammad(request, ticket_id):
     try:
         # Get ticket from Zammad
@@ -253,20 +256,7 @@ def analyze_ticket_from_zammad(request, ticket_id):
         analyzer = TicketAnalyzerService()
         result = analyzer.analyze_ticket(ticket)
         
-        if result['success']:
-            # Serialize the analysis object
-            analysis_data = {
-                'intention': result['analysis'].intention,
-                'category': result['analysis'].category,
-                'priority': result['analysis'].priority,
-                'ai_response': result['analysis'].ai_response,
-            }
-            return Response({
-                'success': True,
-                'analysis': analysis_data
-            })
-        else:
-            return Response(result)
+        return Response(result)  # Retourner directement result
             
     except Exception as e:
         return Response({'error': str(e)}, status=400)
