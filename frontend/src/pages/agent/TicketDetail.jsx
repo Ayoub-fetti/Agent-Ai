@@ -7,6 +7,7 @@ const TicketDetail = () => {
   const [data, setData] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [creatingArticle, setCreatingArticle] = useState(false);
 
   useEffect(() => {
     api.get(`/tickets/${id}/`).then((res) => setData(res.data));
@@ -21,6 +22,38 @@ const TicketDetail = () => {
       alert("Erreur lors de l'analyse");
     }
     setLoading(false);
+  };
+
+  const createInternalArticle = async () => {
+    if (!analysis) return;
+    
+    setCreatingArticle(true);
+    try {
+      const articleBody = `
+        <h3>Analyse IA du ticket</h3>
+        <p><strong>Intention:</strong> ${analysis.intention}</p>
+        <p><strong>Catégorie:</strong> ${analysis.category}</p>
+        <p><strong>Priorité:</strong> ${analysis.priority}</p>
+        
+        <h4>Réponse proposée:</h4>
+        <p>${analysis.ai_response.response}</p>
+        
+        <h4>Solution:</h4>
+        <ul>
+          ${analysis.ai_response.solution.map(step => `<li>${step}</li>`).join('')}
+        </ul>
+      `;
+      
+      await api.post(`/tickets/${id}/internal-article/`, {
+        subject: 'Analyse IA - Note interne',
+        body: articleBody
+      });
+      
+      alert('Article interne créé avec succès');
+    } catch {
+      alert('Erreur lors de la création de l\'article');
+    }
+    setCreatingArticle(false);
   };
 
   if (!data) return <div>Loading...</div>;
@@ -39,7 +72,6 @@ const TicketDetail = () => {
 
       {analysis && (
         <div className="bg-gray-100 p-4 rounded mb-4">
-
           <h3 className="font-bold mb-3">Analyse IA</h3>
 
           <div className="grid grid-cols-3 gap-4 mb-4">
@@ -48,7 +80,6 @@ const TicketDetail = () => {
             <div><strong>Priorité:</strong> {analysis.priority}</div>
           </div>
 
-          {/* Réponse */}
           <div className="bg-white p-4 rounded mb-4 border-l-4 border-blue-500">
             <h4 className="font-semibold mb-2 text-blue-700">
               Réponse à votre demande
@@ -56,8 +87,7 @@ const TicketDetail = () => {
             <p>{analysis.ai_response.response}</p>
           </div>
 
-          {/* Solution */}
-          <div className="bg-white p-4 rounded border-l-4 border-green-500">
+          <div className="bg-white p-4 rounded mb-4 border-l-4 border-green-500">
             <h4 className="font-semibold mb-2 text-green-700">
               Solution proposée
             </h4>
@@ -68,17 +98,19 @@ const TicketDetail = () => {
             </ul>
           </div>
 
+          <button
+            onClick={createInternalArticle}
+            disabled={creatingArticle}
+            className="bg-green-500 text-white px-4 py-2 rounded"
+          >
+            {creatingArticle ? 'Création...' : 'Créer article interne'}
+          </button>
         </div>
       )}
 
-
       <div className="mb-6">
-        <p>
-          <strong>Number:</strong> {data.ticket.number}
-        </p>
-        <p>
-          <strong>State:</strong> {data.ticket.state_id}
-        </p>
+        <p><strong>Number:</strong> {data.ticket.number}</p>
+        <p><strong>State:</strong> {data.ticket.state_id}</p>
       </div>
 
       <h2 className="text-xl mb-4">Messages:</h2>

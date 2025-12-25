@@ -67,4 +67,25 @@ class ZammadAPIService:
         except requests.RequestException as e:
             logger.error(f"Erreur articles ticket {ticket_id}: {e}")
             raise
+    def create_internal_article(self, ticket_id: int, subject: str, body: str) -> Dict:
+        try:
+            data = {
+                'ticket_id': ticket_id,
+                'subject': subject,
+                'body': body,
+                'content_type': 'text/html',
+                'type': 'note',
+                'internal': True,
+                'sender': 'Agent'
+            }
+            response = requests.post(
+                f"{self.base_url}/api/v1/ticket_articles",
+                headers=self.headers,
+                json=data
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f"Erreur création article interne ticket {ticket_id}: {e}")
+            raise
 

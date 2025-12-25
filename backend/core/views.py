@@ -260,3 +260,16 @@ def analyze_ticket_from_zammad(request, ticket_id):
             
     except Exception as e:
         return Response({'error': str(e)}, status=400)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_internal_article(request, ticket_id):
+    try:
+        api = ZammadAPIService()
+        subject = request.data.get('subject', 'Note d\'analyse IA')
+        body = request.data.get('body', '')
+        
+        result = api.create_internal_article(ticket_id, subject, body)
+        return Response({'message': 'Article interne créé', 'article': result})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
