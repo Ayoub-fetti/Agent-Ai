@@ -10,7 +10,9 @@ import TicketList from "../pages/agent/TicketList";
 import TicketDetail from "../pages/agent/TicketDetail";
 
 const AppRoutes = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <Routes>
@@ -66,7 +68,16 @@ const AppRoutes = () => {
       />
 
       <Route path="/unauthorized" element={<div>Accès non autorisé</div>} />
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route 
+        path="/" 
+        element={
+          user ? (
+            <Navigate to={getRouteByRole(user.role)} replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        } 
+      />
     </Routes>
   );
 };

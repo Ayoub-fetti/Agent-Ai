@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/auth';
 
@@ -10,12 +11,20 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = authService.getToken();
-    const userData = authService.getCurrentUser();
-    if (token && userData) {
-      setUser(userData);
+    console.log('AuthContext initializing...');
+    try {
+      const token = authService.getToken();
+      const userData = authService.getCurrentUser();
+      console.log('Token:', token, 'User:', userData);
+      
+      if (token && userData) {
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
     }
     setLoading(false);
+    console.log('AuthContext initialized');
   }, []);
 
   const login = async (credentials) => {

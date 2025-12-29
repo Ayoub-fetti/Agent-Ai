@@ -1,3 +1,4 @@
+// src/services/auth.js
 import api from './api';
 
 export const authService = {
@@ -17,7 +18,8 @@ export const authService = {
   },
   
   getCurrentUser: () => {
-    return JSON.parse(localStorage.getItem('user'));
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
   },
   
   getToken: () => {
