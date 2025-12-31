@@ -5,9 +5,15 @@ import logging.config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
+# DEBUG peut être défini comme "WARN" pour le logging, donc on utilise DJANGO_DEBUG ou on vérifie
+try:
+    DEBUG = config('DJANGO_DEBUG', default='False', cast=bool)
+except:
+    # Si DJANGO_DEBUG n'existe pas, essayer DEBUG mais gérer le cas où ce n'est pas un booléen
+    debug_val = config('DEBUG', default='False')
+    DEBUG = debug_val.lower() in ('true', '1', 'yes', 'on') if isinstance(debug_val, str) else bool(debug_val)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',') if config('ALLOWED_HOSTS', default='') else []
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -77,9 +83,9 @@ TEMPLATES = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
+        'NAME': config('DB_NAME', default='agent_ai'),
+        'USER': config('DB_USER', default='postgres'),
+        'PASSWORD': config('DB_PASSWORD', default='postgres'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
     }
@@ -129,9 +135,9 @@ LOGGING = {
     },
 }
 
-OPEN_ROUTER_API_KEY = config('OPEN_ROUTER_API_KEY')
+OPEN_ROUTER_API_KEY = config('OPEN_ROUTER_API_KEY', default='')
 # Configuration Zammad
-ZAMMAD_TOKEN = config('TOKEN_ZAMMAD')
-ZAMMAD_URL = config('URL_ZAMMAD')
+ZAMMAD_TOKEN = config('TOKEN_ZAMMAD', default='')
+ZAMMAD_URL = config('URL_ZAMMAD', default='')
 
 

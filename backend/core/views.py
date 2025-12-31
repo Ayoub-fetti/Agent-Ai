@@ -273,3 +273,179 @@ def create_internal_article(request, ticket_id):
         return Response({'message': 'Article interne créé', 'article': result})
     except Exception as e:
         return Response({'error': str(e)}, status=400)
+
+# ==================== LEADS API ====================
+
+from .models import Lead
+from .serializers import LeadSerializer, LeadSearchRequestSerializer
+from .services.lead_service import LeadService
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def search_leads(request):
+    """Lance une recherche de leads GTB/GTEB"""
+    try:
+        serializer = LeadSearchRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            countries = serializer.validated_data.get('countries', ['Maroc', 'France', 'Canada'])
+            max_leads = serializer.validated_data.get('max_leads_per_source', 50)
+            
+            lead_service = LeadService()
+            results = lead_service.search_and_create_leads(
+                countries=countries,
+                max_leads_per_source=max_leads
+            )
+            
+            return Response({
+                'message': 'Recherche terminée',
+                'results': results
+            })
+        return Response(serializer.errors, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_leads(request):
+    """Liste tous les leads avec filtres"""
+    try:
+        leads = Lead.objects.all()
+        
+        # Filtres
+        temperature = request.query_params.get('temperature')
+        if temperature:
+            leads = leads.filter(temperature=temperature)
+        
+        country = request.query_params.get('country')
+        if country:
+            leads = leads.filter(country=country)
+        
+        project_type = request.query_params.get('project_type')
+        if project_type:
+            leads = leads.filter(project_type=project_type)
+        
+        sector = request.query_params.get('sector')
+        if sector:
+            leads = leads.filter(sector=sector)
+        
+        min_score = request.query_params.get('min_score')
+        if min_score:
+            try:
+                leads = leads.filter(score__gte=int(min_score))
+            except ValueError:
+                pass
+        
+        is_contacted = request.query_params.get('is_contacted')
+        if is_contacted is not None:
+            leads = leads.filter(is_contacted=is_contacted.lower() == 'true')
+        
+        # Tri
+        ordering = request.query_params.get('ordering', '-score')
+        leads = leads.order_by(ordering)
+        
+        # Pagination
+        page_size = int(request.query_params.get('page_size', 20))
+        page = int(request.query_params.get('page', 1))
+        start = (page - 1) * page_size
+        end = start + page_size
+        
+        total = leads.count()
+        leads_page = leads[start:end]
+        
+        serializer = LeadSerializer(leads_page, many=True)
+        
+        return Response({
+            'count': total,
+            'page': page,
+            'page_size': page_size,
+            'results': serializer.data
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def lead_detail(request, lead_id):
+    """Détails d'un lead"""
+    try:
+        lead = Lead.objects.get(id=lead_id)
+        serializer = LeadSerializer(lead)
+        return Response(serializer.data)
+    except Lead.DoesNotExist:
+        return Response({'error': 'Lead non trouvé'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reanalyze_lead(request, lead_id):
+    """Réanalyse un lead existant"""
+    try:
+        lead_service = LeadService()
+        result = lead_service.reanalyze_lead(lead_id)
+        
+        if result.get('success'):
+            return Response(result)
+        else:
+            return Response(result, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_lead(request, lead_id):
+    """Met à jour un lead"""
+    try:
+        lead = Lead.objects.get(id=lead_id)
+        
+        # Champs modifiables
+        updatable_fields = ['is_contacted', 'is_converted', 'notes', 'email', 'phone']
+        for field in updatable_fields:
+            if field in request.data:
+                setattr(lead, field, request.data[field])
+        
+        lead.save()
+        serializer = LeadSerializer(lead)
+        return Response(serializer.data)
+    except Lead.DoesNotExist:
+        return Response({'error': 'Lead non trouvé'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def leads_stats(request):
+    """Statistiques sur les leads"""
+    try:
+        total = Lead.objects.count()
+        by_temperature = {
+            'chaud': Lead.objects.filter(temperature='chaud').count(),
+            'tiede': Lead.objects.filter(temperature='tiede').count(),
+            'froid': Lead.objects.filter(temperature='froid').count()
+        }
+        by_country = {}
+        for country in Lead.objects.values_list('country', flat=True).distinct():
+            by_country[country] = Lead.objects.filter(country=country).count()
+        
+        by_project_type = {}
+        for pt in Lead.objects.values_list('project_type', flat=True).distinct():
+            if pt:
+                by_project_type[pt] = Lead.objects.filter(project_type=pt).count()
+        
+        contacted = Lead.objects.filter(is_contacted=True).count()
+        converted = Lead.objects.filter(is_converted=True).count()
+        
+        avg_score = Lead.objects.aggregate(avg_score=models.Avg('score'))['avg_score'] or 0
+        
+        return Response({
+            'total': total,
+            'by_temperature': by_temperature,
+            'by_country': by_country,
+            'by_project_type': by_project_type,
+            'contacted': contacted,
+            'converted': converted,
+            'conversion_rate': (converted / total * 100) if total > 0 else 0,
+            'avg_score': round(avg_score, 2)
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+from django.db import models

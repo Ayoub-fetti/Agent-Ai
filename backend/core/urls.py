@@ -22,4 +22,11 @@ urlpatterns = [
     path('analysis/<int:analysis_id>/update/', views.update_ai_response, name='update_ai_response'),
     path('analysis/<int:analysis_id>/validate/', views.validate_response, name='validate_response'),
     path('analysis/<int:analysis_id>/send/', views.send_to_zammad, name='send_to_zammad'),
+    # Leads API
+    path('leads/search/', views.search_leads, name='search_leads'),
+    path('leads/', views.list_leads, name='list_leads'),
+    path('leads/stats/', views.leads_stats, name='leads_stats'),
+    path('leads/<int:lead_id>/', views.lead_detail, name='lead_detail'),
+    path('leads/<int:lead_id>/reanalyze/', views.reanalyze_lead, name='reanalyze_lead'),
+    path('leads/<int:lead_id>/update/', views.update_lead, name='update_lead'),
 ]
