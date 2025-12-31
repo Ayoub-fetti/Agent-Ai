@@ -23,7 +23,8 @@ class LeadService:
         self.scorer = LeadScorer(llm_client=self.llm_client)
     
     def search_and_create_leads(self, countries: List[str] = None, 
-                               max_leads_per_source: int = 50) -> Dict[str, Any]:
+                               max_leads_per_source: int = 50,
+                               progress_tracker = None) -> Dict[str, Any]:
         """Recherche et crée des leads depuis toutes les sources"""
         if countries is None:
             countries = ["Maroc", "France", "Canada"]
@@ -39,7 +40,7 @@ class LeadService:
         
         try:
             # Rechercher les leads (retourne maintenant un dict avec leads et report)
-            search_result = self.search_service.search_all_sources(countries)
+            search_result = self.search_service.search_all_sources(countries, progress_tracker=progress_tracker)
             raw_leads = search_result.get('leads', [])
             results['search_report'] = search_result.get('report', {})
             results['total_found'] = len(raw_leads)

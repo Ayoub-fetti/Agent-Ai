@@ -24,6 +24,7 @@ urlpatterns = [
     path('analysis/<int:analysis_id>/send/', views.send_to_zammad, name='send_to_zammad'),
     # Leads API
     path('leads/search/', views.search_leads, name='search_leads'),
+    path('leads/search/<str:search_id>/progress/', views.search_progress, name='search_progress'),
     path('leads/', views.list_leads, name='list_leads'),
     path('leads/stats/', views.leads_stats, name='leads_stats'),
     path('leads/<int:lead_id>/', views.lead_detail, name='lead_detail'),

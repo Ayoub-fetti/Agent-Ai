@@ -42,6 +42,9 @@ const CommercialDashboard = () => {
   const [searchCountries, setSearchCountries] = useState(['Maroc', 'France', 'Canada']);
   const [searchResults, setSearchResults] = useState(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const [searchProgress, setSearchProgress] = useState(null);
+  const [currentSearchId, setCurrentSearchId] = useState(null);
+  const [progressInterval, setProgressInterval] = useState(null);
 
   useEffect(() => {
     fetchLeads();
@@ -79,23 +82,54 @@ const CommercialDashboard = () => {
   const handleSearchLeads = async () => {
     try {
       setSearching(true);
+      setSearchProgress(null);
+      
+      // Lancer la recherche
       const response = await api.post('/leads/search/', {
         countries: searchCountries,
         max_leads_per_source: 50,
       });
       
-      const results = response.data.results;
-      setSearchResults(results);
+      const searchId = response.data.search_id;
+      setCurrentSearchId(searchId);
       setShowSearchModal(false);
       setShowResultsModal(true);
       
-      // Rafraîchir les données
-      fetchLeads();
-      fetchStats();
+      // Poller la progression
+      const interval = setInterval(async () => {
+        try {
+          const progressResponse = await api.get(`/leads/search/${searchId}/progress/`);
+          const progress = progressResponse.data;
+          setSearchProgress(progress);
+          
+          // Si terminée, arrêter le polling et afficher les résultats
+          if (progress.status === 'completed' || progress.status === 'error') {
+            clearInterval(interval);
+            setProgressInterval(null);
+            
+            if (progress.results) {
+              setSearchResults(progress.results);
+            }
+            
+            // Rafraîchir les données
+            fetchLeads();
+            fetchStats();
+            setSearching(false);
+          }
+        } catch (error) {
+          console.error('Erreur récupération progression:', error);
+        }
+      }, 1000); // Poller toutes les secondes
+      
+      setProgressInterval(interval);
+      
+      // Nettoyer l'intervalle si le composant est démonté
+      return () => {
+        if (interval) clearInterval(interval);
+      };
     } catch (error) {
       console.error('Erreur lors de la recherche:', error);
       alert('Erreur lors de la recherche de leads');
-    } finally {
       setSearching(false);
     }
   };
@@ -583,15 +617,24 @@ const CommercialDashboard = () => {
       )}
 
       {/* Modal de résultats de recherche */}
-      {showResultsModal && searchResults && (
+      {showResultsModal && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">Rapport de Recherche</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {searchProgress?.status === 'running' ? 'Recherche en cours...' : 'Rapport de Recherche'}
+              </h2>
               <button
                 onClick={() => {
+                  if (progressInterval) {
+                    clearInterval(progressInterval);
+                    setProgressInterval(null);
+                  }
                   setShowResultsModal(false);
                   setSearchResults(null);
+                  setSearchProgress(null);
+                  setCurrentSearchId(null);
+                  setSearching(false);
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -599,29 +642,62 @@ const CommercialDashboard = () => {
               </button>
             </div>
 
-            <div className="space-y-6">
-              {/* Résumé */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 mb-2">Résumé</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-blue-700">Leads trouvés:</span>
-                    <span className="font-bold text-blue-900 ml-2">{searchResults.total_found}</span>
+            {/* Barre de progression */}
+            {searchProgress && searchProgress.status === 'running' && (
+              <div className="space-y-4 mb-6">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      {searchProgress.current_source || 'Initialisation...'}
+                    </span>
+                    <span className="text-sm font-bold text-blue-600">
+                      {searchProgress.percentage}%
+                    </span>
                   </div>
-                  <div>
-                    <span className="text-blue-700">Nouveaux créés:</span>
-                    <span className="font-bold text-green-600 ml-2">{searchResults.created}</span>
-                  </div>
-                  <div>
-                    <span className="text-blue-700">Mis à jour:</span>
-                    <span className="font-bold text-yellow-600 ml-2">{searchResults.updated}</span>
-                  </div>
-                  <div>
-                    <span className="text-blue-700">Erreurs:</span>
-                    <span className="font-bold text-red-600 ml-2">{searchResults.errors}</span>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-blue-600 h-full rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${searchProgress.percentage}%` }}
+                    ></div>
                   </div>
                 </div>
+                <div className="text-sm text-gray-600">
+                  <p>
+                    Sources complétées: {searchProgress.completed_sources} / {searchProgress.total_sources}
+                  </p>
+                  <p>Leads trouvés jusqu'à présent: {searchProgress.leads_found}</p>
+                  {searchProgress.elapsed_seconds && (
+                    <p>Temps écoulé: {Math.round(searchProgress.elapsed_seconds)}s</p>
+                  )}
+                </div>
               </div>
+            )}
+
+            {/* Résultats finaux */}
+            {searchResults && searchProgress?.status !== 'running' && (
+              <div className="space-y-6">
+                {/* Résumé */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">Résumé</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-blue-700">Leads trouvés:</span>
+                      <span className="font-bold text-blue-900 ml-2">{searchResults.total_found}</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Nouveaux créés:</span>
+                      <span className="font-bold text-green-600 ml-2">{searchResults.created}</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Mis à jour:</span>
+                      <span className="font-bold text-yellow-600 ml-2">{searchResults.updated}</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Erreurs:</span>
+                      <span className="font-bold text-red-600 ml-2">{searchResults.errors}</span>
+                    </div>
+                  </div>
+                </div>
 
               {/* Rapport détaillé */}
               {searchResults.search_report && (
@@ -724,19 +800,27 @@ const CommercialDashboard = () => {
                 </div>
               )}
 
-              {/* Bouton de fermeture */}
-              <div className="flex justify-end pt-4 border-t">
-                <button
-                  onClick={() => {
-                    setShowResultsModal(false);
-                    setSearchResults(null);
-                  }}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  Fermer
-                </button>
+                {/* Bouton de fermeture */}
+                <div className="flex justify-end pt-4 border-t">
+                  <button
+                    onClick={() => {
+                      if (progressInterval) {
+                        clearInterval(progressInterval);
+                        setProgressInterval(null);
+                      }
+                      setShowResultsModal(false);
+                      setSearchResults(null);
+                      setSearchProgress(null);
+                      setCurrentSearchId(null);
+                      setSearching(false);
+                    }}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                  >
+                    {searchProgress?.status === 'running' ? 'Annuler' : 'Fermer'}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

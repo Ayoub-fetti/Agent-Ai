@@ -13,6 +13,11 @@ from .models import User, Ticket
 from .serializers import LoginSerializer, UserSerializer, CreateUserSerializer, TicketSerializer
 from .services.zammad_api import ZammadAPIService
 from django.utils import timezone
+import logging
+import uuid
+import threading
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
@@ -279,28 +284,73 @@ def create_internal_article(request, ticket_id):
 from .models import Lead
 from .serializers import LeadSerializer, LeadSearchRequestSerializer
 from .services.lead_service import LeadService
+from .services.search_progress import create_tracker, get_tracker, remove_tracker
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def search_leads(request):
-    """Lance une recherche de leads GTB/GTEB"""
+    """Lance une recherche de leads GTB/GTEB avec progression"""
     try:
         serializer = LeadSearchRequestSerializer(data=request.data)
         if serializer.is_valid():
             countries = serializer.validated_data.get('countries', ['Maroc', 'France', 'Canada'])
             max_leads = serializer.validated_data.get('max_leads_per_source', 50)
             
-            lead_service = LeadService()
-            results = lead_service.search_and_create_leads(
-                countries=countries,
-                max_leads_per_source=max_leads
-            )
+            # Créer un ID de recherche unique
+            search_id = str(uuid.uuid4())
+            
+            # Créer un tracker de progression
+            progress_tracker = create_tracker(search_id)
+            
+            # Lancer la recherche dans un thread séparé
+            def run_search():
+                try:
+                    lead_service = LeadService()
+                    # Rechercher et traiter les leads avec progression
+                    results = lead_service.search_and_create_leads(
+                        countries=countries,
+                        max_leads_per_source=max_leads,
+                        progress_tracker=progress_tracker
+                    )
+                    
+                    # Stocker les résultats dans le tracker
+                    progress_tracker.search_results = results
+                except Exception as e:
+                    logger.error(f"Erreur recherche: {e}")
+                    progress_tracker.error(str(e))
+            
+            # Démarrer le thread
+            thread = threading.Thread(target=run_search)
+            thread.daemon = True
+            thread.start()
             
             return Response({
-                'message': 'Recherche terminée',
-                'results': results
+                'search_id': search_id,
+                'message': 'Recherche lancée',
+                'status': 'running'
             })
         return Response(serializer.errors, status=400)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_progress(request, search_id):
+    """Récupère la progression d'une recherche"""
+    try:
+        tracker = get_tracker(search_id)
+        if not tracker:
+            return Response({'error': 'Recherche non trouvée'}, status=404)
+        
+        progress = tracker.get_progress()
+        
+        # Si terminée, inclure les résultats
+        if progress['status'] == 'completed' and hasattr(tracker, 'search_results'):
+            progress['results'] = tracker.search_results
+            # Nettoyer après 5 minutes
+            remove_tracker(search_id)
+        
+        return Response(progress)
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 

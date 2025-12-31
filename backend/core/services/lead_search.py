@@ -2,10 +2,12 @@
 import logging
 import re
 import requests
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import time
+from .search_progress import SearchProgressTracker
+from .additional_sources import AdditionalSourcesSearcher
 
 logger = logging.getLogger(__name__)
 
@@ -955,7 +957,7 @@ class LeadSearchService:
     
     # ==================== RECHERCHE GLOBALE ====================
     
-    def search_all_sources(self, countries: List[str] = None) -> Dict[str, Any]:
+    def search_all_sources(self, countries: List[str] = None, progress_tracker: Optional[SearchProgressTracker] = None) -> Dict[str, Any]:
         """Recherche sur toutes les sources configurées (100% gratuit)
         
         Retourne un rapport détaillé des recherches effectuées
@@ -972,133 +974,492 @@ class LeadSearchService:
             'total_leads_found': 0
         }
         
-        # Marchés publics
+        # Initialiser le searcher pour les sources supplémentaires
+        additional_searcher = AdditionalSourcesSearcher(self.session, self.KEYWORDS)
+        
+        # Compter le nombre total de sources à consulter
+        total_sources = 0
+        sources_list = []
+        
+        # Marchés publics France
         if "France" in countries:
+            sources_list.extend([
+                ('BOAMP', 'https://www.boamp.fr', 'Marchés publics'),
+                ('Marches-publics.gouv.fr', 'https://www.marches-publics.gouv.fr', 'Marchés publics'),
+                ('Achatpublic.com', 'https://www.achatpublic.com', 'Marchés publics'),
+                ('E-marchespublics.com', 'https://www.e-marchespublics.com', 'Marchés publics'),
+                ('Francemarches.com', 'https://www.francemarches.com', 'Marchés publics'),
+                ('TED Europa', 'https://ted.europa.eu', 'Marchés publics'),
+                ('Dgmarket.com', 'https://www.dgmarket.com', 'Marchés publics'),
+                ('Globaltenders.com', 'https://www.globaltenders.com', 'Marchés publics'),
+                ('Tendersinfo.com', 'https://www.tendersinfo.com', 'Marchés publics'),
+                ('Eurolegales.com', 'https://www.eurolegales.com', 'Marchés publics'),
+            ])
+        
+        # Marchés publics Maroc
+        if "Maroc" in countries:
+            sources_list.append(('Portail Marocain', 'https://www.marchespublics.gov.ma', 'Marchés publics'))
+        
+        # Marchés publics Canada
+        if "Canada" in countries:
+            sources_list.extend([
+                ('Buyandsell.gc.ca', 'https://buyandsell.gc.ca', 'Marchés publics'),
+                ('MERX', 'https://www.merx.com', 'Marchés publics'),
+            ])
+        
+        # Annuaires entreprises
+        if "France" in countries:
+            sources_list.extend([
+                ('Societe.com', 'https://www.societe.com', 'Annuaires'),
+                ('Infogreffe.fr', 'https://www.infogreffe.fr', 'Annuaires'),
+                ('Manageo.fr', 'https://www.manageo.fr', 'Annuaires'),
+                ('Pages Jaunes', 'https://www.pagesjaunes.fr', 'Annuaires'),
+                ('Europages.com', 'https://www.europages.com', 'Annuaires'),
+                ('Kompass.com', 'https://www.kompass.com', 'Annuaires'),
+            ])
+        
+        if "Maroc" in countries:
+            sources_list.extend([
+                ('Charika.ma', 'https://www.charika.ma', 'Annuaires'),
+                ('Kerix.net', 'https://www.kerix.net', 'Annuaires'),
+            ])
+        
+        # Emploi
+        for country in countries:
+            sources_list.extend([
+                (f'LinkedIn Jobs ({country})', 'https://www.linkedin.com/jobs', 'Emploi'),
+                (f'Indeed ({country})', f'https://{"ma" if country == "Maroc" else "fr"}.indeed.com', 'Emploi'),
+                ('Glassdoor', 'https://www.glassdoor.com', 'Emploi'),
+                ('Welcome to the Jungle', 'https://www.welcometothejungle.com', 'Emploi'),
+            ])
+        
+        # Bâtiment / Énergie
+        if "France" in countries:
+            sources_list.extend([
+                ('Batiactu.com', 'https://www.batiactu.com', 'Bâtiment'),
+                ('Lemoniteur.fr', 'https://www.lemoniteur.fr', 'Bâtiment'),
+                ('Construction21.org', 'https://www.construction21.org', 'Bâtiment'),
+                ('Smart Buildings Magazine', 'https://www.smartbuildingsmagazine.com', 'Bâtiment'),
+            ])
+        
+        # OpenStreetMap pour chaque pays
+        for country in countries:
+            sources_list.append((f'OpenStreetMap ({country})', 'https://www.openstreetmap.org', 'Cartographie'))
+        
+        total_sources = len(sources_list)
+        
+        if progress_tracker:
+            progress_tracker.set_total_sources(total_sources)
+            progress_tracker.start()
+        
+        # ==================== MARCHÉS PUBLICS FRANCE ====================
+        if "France" in countries:
+            # BOAMP
             try:
-                logger.info("Recherche sur BOAMP (France)...")
+                source_name = 'BOAMP (France)'
+                if progress_tracker:
+                    progress_tracker.update(source_name, 0)
+                logger.info(f"Recherche sur {source_name}...")
                 leads_fr = self.search_public_markets_france()
                 search_report['sources_consulted'].append({
-                    'name': 'BOAMP (France)',
+                    'name': source_name,
                     'url': 'https://www.boamp.fr',
                     'type': 'Marchés publics'
                 })
                 if leads_fr:
-                    search_report['sources_with_results'].append('BOAMP (France)')
+                    search_report['sources_with_results'].append(source_name)
                     all_leads.extend(leads_fr)
+                    if progress_tracker:
+                        progress_tracker.update(source_name, len(leads_fr))
                 else:
-                    search_report['sources_without_results'].append('BOAMP (France)')
+                    search_report['sources_without_results'].append(source_name)
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
             except Exception as e:
                 logger.error(f"Erreur recherche BOAMP: {e}")
                 search_report['errors'].append({
                     'source': 'BOAMP (France)',
                     'error': str(e)
                 })
+                if progress_tracker:
+                    progress_tracker.update('BOAMP (France)', 0, str(e))
+            
+            # Autres sources France
+            france_sources = [
+                ('Marches-publics.gouv.fr', additional_searcher.search_marches_publics_gouv, 'https://www.marches-publics.gouv.fr'),
+                ('Achatpublic.com', additional_searcher.search_achatpublic, 'https://www.achatpublic.com'),
+                ('E-marchespublics.com', additional_searcher.search_emarchespublics, 'https://www.e-marchespublics.com'),
+                ('Francemarches.com', additional_searcher.search_francemarches, 'https://www.francemarches.com'),
+                ('TED Europa', additional_searcher.search_ted_europa, 'https://ted.europa.eu'),
+                ('Dgmarket.com', additional_searcher.search_dgmarket, 'https://www.dgmarket.com'),
+                ('Globaltenders.com', additional_searcher.search_globaltenders, 'https://www.globaltenders.com'),
+                ('Tendersinfo.com', additional_searcher.search_tendersinfo, 'https://www.tendersinfo.com'),
+                ('Eurolegales.com', additional_searcher.search_eurolegales, 'https://www.eurolegales.com'),
+            ]
+            
+            for source_name, search_func, url in france_sources:
+                try:
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
+                    logger.info(f"Recherche sur {source_name}...")
+                    leads = search_func()
+                    search_report['sources_consulted'].append({
+                        'name': source_name,
+                        'url': url,
+                        'type': 'Marchés publics'
+                    })
+                    if leads:
+                        search_report['sources_with_results'].append(source_name)
+                        all_leads.extend(leads)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, len(leads))
+                    else:
+                        search_report['sources_without_results'].append(source_name)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, 0)
+                except Exception as e:
+                    logger.error(f"Erreur recherche {source_name}: {e}")
+                    search_report['errors'].append({
+                        'source': source_name,
+                        'error': str(e)
+                    })
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0, str(e))
         
+        # Marchés publics Maroc
         if "Maroc" in countries:
             try:
-                logger.info("Recherche sur Portail Marocain...")
+                source_name = 'Portail Marocain'
+                if progress_tracker:
+                    progress_tracker.update(source_name, 0)
+                logger.info(f"Recherche sur {source_name}...")
                 leads_ma = self.search_public_markets_morocco()
                 search_report['sources_consulted'].append({
-                    'name': 'Portail Marocain',
+                    'name': source_name,
                     'url': 'https://www.marchespublics.gov.ma',
                     'type': 'Marchés publics'
                 })
                 if leads_ma:
-                    search_report['sources_with_results'].append('Portail Marocain')
+                    search_report['sources_with_results'].append(source_name)
                     all_leads.extend(leads_ma)
+                    if progress_tracker:
+                        progress_tracker.update(source_name, len(leads_ma))
                 else:
-                    search_report['sources_without_results'].append('Portail Marocain')
+                    search_report['sources_without_results'].append(source_name)
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
             except Exception as e:
                 logger.error(f"Erreur recherche Portail Marocain: {e}")
                 search_report['errors'].append({
                     'source': 'Portail Marocain',
                     'error': str(e)
                 })
+                if progress_tracker:
+                    progress_tracker.update('Portail Marocain', 0, str(e))
         
+        # Marchés publics Canada
         if "Canada" in countries:
-            try:
-                logger.info("Recherche sur sources canadiennes...")
-                leads_ca = self.search_public_markets_canada()
-                search_report['sources_consulted'].append({
-                    'name': 'Sources Canada',
-                    'url': 'MERX, Buyandsell.gc.ca',
-                    'type': 'Marchés publics'
-                })
-                if leads_ca:
-                    search_report['sources_with_results'].append('Sources Canada')
-                    all_leads.extend(leads_ca)
-                else:
-                    search_report['sources_without_results'].append('Sources Canada')
-            except Exception as e:
-                logger.error(f"Erreur recherche Canada: {e}")
-                search_report['errors'].append({
-                    'source': 'Sources Canada',
-                    'error': str(e)
-                })
+            canada_sources = [
+                ('Buyandsell.gc.ca', 'https://buyandsell.gc.ca'),
+                ('MERX', 'https://www.merx.com'),
+            ]
+            
+            for source_name, url in canada_sources:
+                try:
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
+                    logger.info(f"Recherche sur {source_name}...")
+                    # Utiliser la méthode existante ou additional_searcher
+                    if source_name == 'MERX':
+                        leads_ca = self.search_public_markets_canada()
+                    else:
+                        # Pour buyandsell, utiliser une recherche générique
+                        leads_ca = []
+                        try:
+                            response = self.session.get(f"{url}/search", params={'q': 'GTB'}, timeout=15)
+                            if response.status_code == 200:
+                                soup = BeautifulSoup(response.text, 'html.parser')
+                                results = soup.find_all('div', class_=lambda x: x and 'result' in x.lower())
+                                for result in results[:5]:
+                                    title_elem = result.find('h3') or result.find('a')
+                                    title = title_elem.get_text().strip() if title_elem else ""
+                                    if title and any(kw.lower() in title.lower() for kw in self.KEYWORDS):
+                                        leads_ca.append({
+                                            'lead_type': 'marche_public',
+                                            'title': title[:500],
+                                            'description': result.get_text().strip()[:5000],
+                                            'organization_name': "Non spécifié",
+                                            'city': self._extract_city_from_text(title),
+                                            'country': 'Canada',
+                                            'source_url': url,
+                                            'keywords_found': [kw for kw in self.KEYWORDS if kw.lower() in title.lower()],
+                                            'raw_data': {}
+                                        })
+                        except:
+                            pass
+                    
+                    search_report['sources_consulted'].append({
+                        'name': source_name,
+                        'url': url,
+                        'type': 'Marchés publics'
+                    })
+                    if leads_ca:
+                        search_report['sources_with_results'].append(source_name)
+                        all_leads.extend(leads_ca)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, len(leads_ca))
+                    else:
+                        search_report['sources_without_results'].append(source_name)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, 0)
+                except Exception as e:
+                    logger.error(f"Erreur recherche {source_name}: {e}")
+                    search_report['errors'].append({
+                        'source': source_name,
+                        'error': str(e)
+                    })
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0, str(e))
         
-        # Entreprises
+        # ==================== ANNUAIRES ENTREPRISES ====================
+        if "France" in countries:
+            annuaire_sources = [
+                ('Societe.com', additional_searcher.search_societe_com, 'https://www.societe.com'),
+                ('Infogreffe.fr', additional_searcher.search_infogreffe, 'https://www.infogreffe.fr'),
+                ('Manageo.fr', additional_searcher.search_manageo, 'https://www.manageo.fr'),
+                ('Europages.com', additional_searcher.search_europages, 'https://www.europages.com'),
+                ('Kompass.com', additional_searcher.search_kompass, 'https://www.kompass.com'),
+            ]
+            
+            for source_name, search_func, url in annuaire_sources:
+                try:
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
+                    logger.info(f"Recherche sur {source_name}...")
+                    leads = search_func()
+                    search_report['sources_consulted'].append({
+                        'name': source_name,
+                        'url': url,
+                        'type': 'Annuaires'
+                    })
+                    if leads:
+                        search_report['sources_with_results'].append(source_name)
+                        all_leads.extend(leads)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, len(leads))
+                    else:
+                        search_report['sources_without_results'].append(source_name)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, 0)
+                except Exception as e:
+                    logger.error(f"Erreur recherche {source_name}: {e}")
+                    search_report['errors'].append({
+                        'source': source_name,
+                        'error': str(e)
+                    })
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0, str(e))
+        
+        if "Maroc" in countries:
+            maroc_annuaires = [
+                ('Charika.ma', additional_searcher.search_charika_ma, 'https://www.charika.ma'),
+            ]
+            
+            for source_name, search_func, url in maroc_annuaires:
+                try:
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
+                    logger.info(f"Recherche sur {source_name}...")
+                    leads = search_func()
+                    search_report['sources_consulted'].append({
+                        'name': source_name,
+                        'url': url,
+                        'type': 'Annuaires'
+                    })
+                    if leads:
+                        search_report['sources_with_results'].append(source_name)
+                        all_leads.extend(leads)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, len(leads))
+                    else:
+                        search_report['sources_without_results'].append(source_name)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, 0)
+                except Exception as e:
+                    logger.error(f"Erreur recherche {source_name}: {e}")
+                    search_report['errors'].append({
+                        'source': source_name,
+                        'error': str(e)
+                    })
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0, str(e))
+        
+        # ==================== ENTREPRISES (Méthodes existantes) ====================
         for country in countries:
             try:
+                source_name = f'Entreprises {country}'
+                if progress_tracker:
+                    progress_tracker.update(source_name, 0)
                 logger.info(f"Recherche entreprises {country}...")
                 companies = self.search_companies_gtb(country=country)
                 
-                # OpenStreetMap
-                search_report['sources_consulted'].append({
-                    'name': f'OpenStreetMap ({country})',
-                    'url': 'https://www.openstreetmap.org',
-                    'type': 'Entreprises'
-                })
-                
-                # Annuaires selon le pays
-                if country == "Maroc":
-                    search_report['sources_consulted'].append({
-                        'name': f'Kerix ({country})',
-                        'url': 'https://www.kerix.net',
-                        'type': 'Entreprises'
-                    })
-                elif country == "France":
-                    search_report['sources_consulted'].append({
-                        'name': f'Pages Jaunes ({country})',
-                        'url': 'https://www.pagesjaunes.fr',
-                        'type': 'Entreprises'
-                    })
-                
                 if companies:
-                    search_report['sources_with_results'].append(f'Entreprises {country}')
+                    search_report['sources_with_results'].append(source_name)
                     all_leads.extend(companies)
+                    if progress_tracker:
+                        progress_tracker.update(source_name, len(companies))
                 else:
-                    search_report['sources_without_results'].append(f'Entreprises {country}')
+                    search_report['sources_without_results'].append(source_name)
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
             except Exception as e:
                 logger.error(f"Erreur recherche entreprises {country}: {e}")
                 search_report['errors'].append({
                     'source': f'Entreprises {country}',
                     'error': str(e)
                 })
-            
-            # Offres d'emploi
+                if progress_tracker:
+                    progress_tracker.update(f'Entreprises {country}', 0, str(e))
+        
+        # ==================== OFFRES D'EMPLOI ====================
+        for country in countries:
+            # Indeed (méthode existante)
             try:
+                source_name = f'Indeed ({country})'
+                if progress_tracker:
+                    progress_tracker.update(source_name, 0)
                 logger.info(f"Recherche offres d'emploi {country}...")
                 jobs = self.search_job_offers_gtb(country=country)
                 
                 search_report['sources_consulted'].append({
-                    'name': f'Indeed ({country})',
+                    'name': source_name,
                     'url': f'https://{"ma" if country == "Maroc" else "fr"}.indeed.com',
                     'type': 'Offres d\'emploi'
                 })
                 
                 if jobs:
-                    search_report['sources_with_results'].append(f'Offres emploi {country}')
+                    search_report['sources_with_results'].append(source_name)
                     all_leads.extend(jobs)
+                    if progress_tracker:
+                        progress_tracker.update(source_name, len(jobs))
                 else:
-                    search_report['sources_without_results'].append(f'Offres emploi {country}')
+                    search_report['sources_without_results'].append(source_name)
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
             except Exception as e:
-                logger.error(f"Erreur recherche offres emploi {country}: {e}")
+                logger.error(f"Erreur recherche Indeed {country}: {e}")
                 search_report['errors'].append({
-                    'source': f'Offres emploi {country}',
+                    'source': f'Indeed ({country})',
                     'error': str(e)
                 })
+                if progress_tracker:
+                    progress_tracker.update(f'Indeed ({country})', 0, str(e))
+            
+            # LinkedIn Jobs
+            if country == "France":
+                try:
+                    source_name = 'LinkedIn Jobs (France)'
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
+                    logger.info(f"Recherche sur {source_name}...")
+                    leads = additional_searcher.search_linkedin_jobs(country)
+                    search_report['sources_consulted'].append({
+                        'name': source_name,
+                        'url': 'https://www.linkedin.com/jobs',
+                        'type': 'Emploi'
+                    })
+                    if leads:
+                        search_report['sources_with_results'].append(source_name)
+                        all_leads.extend(leads)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, len(leads))
+                    else:
+                        search_report['sources_without_results'].append(source_name)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, 0)
+                except Exception as e:
+                    logger.error(f"Erreur recherche LinkedIn: {e}")
+                    search_report['errors'].append({
+                        'source': 'LinkedIn Jobs',
+                        'error': str(e)
+                    })
+                    if progress_tracker:
+                        progress_tracker.update('LinkedIn Jobs', 0, str(e))
+            
+            # Welcome to the Jungle
+            if country == "France":
+                try:
+                    source_name = 'Welcome to the Jungle'
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
+                    logger.info(f"Recherche sur {source_name}...")
+                    leads = additional_searcher.search_welcometothejungle()
+                    search_report['sources_consulted'].append({
+                        'name': source_name,
+                        'url': 'https://www.welcometothejungle.com',
+                        'type': 'Emploi'
+                    })
+                    if leads:
+                        search_report['sources_with_results'].append(source_name)
+                        all_leads.extend(leads)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, len(leads))
+                    else:
+                        search_report['sources_without_results'].append(source_name)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, 0)
+                except Exception as e:
+                    logger.error(f"Erreur recherche WTTJ: {e}")
+                    search_report['errors'].append({
+                        'source': 'Welcome to the Jungle',
+                        'error': str(e)
+                    })
+                    if progress_tracker:
+                        progress_tracker.update('Welcome to the Jungle', 0, str(e))
+        
+        # ==================== BÂTIMENT / ÉNERGIE ====================
+        if "France" in countries:
+            batiment_sources = [
+                ('Batiactu.com', additional_searcher.search_batiactu, 'https://www.batiactu.com'),
+                ('Lemoniteur.fr', additional_searcher.search_lemoniteur, 'https://www.lemoniteur.fr'),
+                ('Construction21.org', additional_searcher.search_construction21, 'https://www.construction21.org'),
+                ('Smart Buildings Magazine', additional_searcher.search_smartbuildingsmagazine, 'https://www.smartbuildingsmagazine.com'),
+            ]
+            
+            for source_name, search_func, url in batiment_sources:
+                try:
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0)
+                    logger.info(f"Recherche sur {source_name}...")
+                    leads = search_func()
+                    search_report['sources_consulted'].append({
+                        'name': source_name,
+                        'url': url,
+                        'type': 'Bâtiment'
+                    })
+                    if leads:
+                        search_report['sources_with_results'].append(source_name)
+                        all_leads.extend(leads)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, len(leads))
+                    else:
+                        search_report['sources_without_results'].append(source_name)
+                        if progress_tracker:
+                            progress_tracker.update(source_name, 0)
+                except Exception as e:
+                    logger.error(f"Erreur recherche {source_name}: {e}")
+                    search_report['errors'].append({
+                        'source': source_name,
+                        'error': str(e)
+                    })
+                    if progress_tracker:
+                        progress_tracker.update(source_name, 0, str(e))
         
         search_report['total_leads_found'] = len(all_leads)
+        
+        # Marquer comme terminé
+        if progress_tracker:
+            progress_tracker.complete()
         
         # Ne plus utiliser de fallback automatique - retourner un rapport transparent
         if len(all_leads) == 0:
