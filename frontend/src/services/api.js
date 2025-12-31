@@ -42,4 +42,14 @@ api.interceptors.response.use(
   }
 );
 
+// Admin Dashboard Stats
+export const getDashboardStats = () => api.get('/admin/dashboard/stats/');
+
+// User Management
+export const getUsers = () => api.get('/admin/users/');
+export const createUser = (data) => api.post('/admin/users/create/', data);
+export const updateUserRole = (userId, data) => api.patch(`/admin/users/${userId}/role/`, data);
+export const toggleUserStatus = (userId) => api.patch(`/admin/users/${userId}/toggle/`);
+export const resetUserPassword = (userId, password) => api.post(`/admin/users/${userId}/reset-password/`, { password });
+
 export default api;

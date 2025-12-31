@@ -13,6 +13,7 @@ urlpatterns = [
     path('admin/users/<int:user_id>/role/', views.update_user_role, name='update_user_role'),
     path('admin/users/<int:user_id>/toggle/', views.toggle_user_status, name='toggle_user_status'),
     path('admin/users/<int:user_id>/reset-password/', views.reset_password, name='reset_password'),
+    path('admin/dashboard/stats/', views.dashboard_stats, name='dashboard_stats'),
     path('tickets/sync/', views.sync_tickets, name='sync_tickets'),
     path('tickets/', views.list_tickets, name='list_tickets'),
     path('tickets/<int:ticket_id>/processed/', views.mark_ticket_processed, name='mark_processed'),

@@ -498,4 +498,62 @@ def leads_stats(request):
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def dashboard_stats(request):
+    """Statistiques du tableau de bord admin"""
+    try:
+        # User stats
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        inactive_users = total_users - active_users
+        
+        users_by_role = {
+            'ADMIN': User.objects.filter(role='ADMIN').count(),
+            'AGENT TECHNIQUE': User.objects.filter(role='AGENT TECHNIQUE').count(),
+            'AGENT COMMERCIAL': User.objects.filter(role='AGENT COMMERCIAL').count(),
+        }
+        
+        # Leads stats
+        total_leads = Lead.objects.count()
+        leads_by_temperature = {
+            'chaud': Lead.objects.filter(temperature='chaud').count(),
+            'tiede': Lead.objects.filter(temperature='tiede').count(),
+            'froid': Lead.objects.filter(temperature='froid').count(),
+        }
+        converted_leads = Lead.objects.filter(is_converted=True).count()
+        
+        # Tickets stats (from database)
+        total_tickets = Ticket.objects.count()
+        processed_tickets = Ticket.objects.filter(processed=True).count()
+        pending_tickets = total_tickets - processed_tickets
+        
+        # Recent activity
+        recent_users = User.objects.order_by('-date_joined')[:5].values('id', 'username', 'role', 'date_joined', 'is_active')
+        recent_leads = Lead.objects.order_by('-created_at')[:5].values('id', 'organization_name', 'temperature', 'score', 'created_at')
+        
+        return Response({
+            'users': {
+                'total': total_users,
+                'active': active_users,
+                'inactive': inactive_users,
+                'by_role': users_by_role,
+                'recent': list(recent_users),
+            },
+            'leads': {
+                'total': total_leads,
+                'by_temperature': leads_by_temperature,
+                'converted': converted_leads,
+                'conversion_rate': round((converted_leads / total_leads * 100), 2) if total_leads > 0 else 0,
+                'recent': list(recent_leads),
+            },
+            'tickets': {
+                'total': total_tickets,
+                'processed': processed_tickets,
+                'pending': pending_tickets,
+            }
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
 from django.db import models
