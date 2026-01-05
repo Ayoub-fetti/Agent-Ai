@@ -35,30 +35,34 @@ class KnowledgeBaseService:
             return {'success': False, 'error': str(e)}
     
     def create_knowledge_article(self, title: str, content: str, category: str = "Procédures Internes", 
-                               knowledge_base_id: int = 1) -> Dict[str, Any]:
-        """Créer un article dans la base de connaissance Zammad"""
+                            knowledge_base_id: int = 1) -> Dict[str, Any]:
         try:
-            # Vérifier/créer la catégorie
-            category_id = self._ensure_category_exists(knowledge_base_id, category)
+            # Récupérer la structure KB
+            kb_data = self.zammad_api.get_knowledge_base_init()
             
-            # Créer l'article
+            # Utiliser la première catégorie disponible
+            categories = kb_data.get('KnowledgeBaseCategory', {})
+            if not categories:
+                return {'success': False, 'error': 'Aucune catégorie disponible'}
+            
+            category_id = list(categories.keys())[0]
+            
             article = self.zammad_api.create_knowledge_base_answer(
-                knowledge_base_id=knowledge_base_id,
+                category_id=int(category_id),
                 title=title,
                 content=content,
-                category_id=category_id,
                 internal=True
             )
             
             return {
                 'success': True,
                 'article': article,
-                'message': f'Article "{title}" créé avec succès dans la base de connaissance'
+                'message': f'Article "{title}" créé avec succès'
             }
             
         except Exception as e:
-            logger.error(f"Erreur création article KB: {str(e)}")
             return {'success': False, 'error': str(e)}
+
     
     def _generate_article_content(self, ticket_analysis: Dict[str, Any], ticket_data: Dict[str, Any]) -> Dict[str, Any]:
         """Générer le contenu de l'article avec l'IA"""
