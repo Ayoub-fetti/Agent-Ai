@@ -1,49 +1,50 @@
 # backend/core/services/llm_client.py
 import logging
 import time
-import json
 from typing import Dict, Any
 from decouple import config
-import requests
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
 class LLMClient:
     def __init__(self):
-        self.api_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.api_key = config('OPEN_ROUTER_API_KEY')
-        self.timeout = 30
+        self.api_key = config('GOOGLE_AI_API_KEY')
+        genai.configure(api_key=self.api_key)
+        
+        # Lister les modèles disponibles
+        try:
+            models = genai.list_models()
+            available_models = [m.name for m in models if 'generateContent' in m.supported_generation_methods]
+            logger.info(f"Available models: {available_models}")
+            
+            # Utiliser le premier modèle disponible ou un modèle par défaut
+            if available_models:
+                model_name = available_models[0].split('/')[-1]  # Extraire juste le nom
+                self.model = genai.GenerativeModel(model_name)
+                logger.info(f"Using model: {model_name}")
+            else:
+                # Fallback vers gemini-pro si aucun modèle trouvé
+                self.model = genai.GenerativeModel('gemini-pro')
+                
+        except Exception as e:
+            logger.error(f"Error listing models: {e}")
+            # Essayer avec gemini-pro par défaut
+            self.model = genai.GenerativeModel('gemini-pro')
+            
         self.max_retries = 3
     
-    def call_api(self, prompt: str, system_prompt: str = "", model: str = "meta-llama/llama-3.2-3b-instruct:free") -> Dict[str, Any]:
+    def call_api(self, prompt: str, system_prompt: str = "", model: str = None) -> Dict[str, Any]:
         for attempt in range(self.max_retries):
             try:
-                payload = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt}
-                    ]
-                }
+                # Combiner le system prompt avec le prompt utilisateur
+                full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
                 
-                response = requests.post(
-                    self.api_url,
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "http://localhost:8000",
-                        "X-Title": "Agent-AI"
-                    },
-                    json=payload,
-                    timeout=self.timeout
-                )
-                
-                response.raise_for_status()
-                result = response.json()
+                response = self.model.generate_content(full_prompt)
                 
                 return {
                     "success": True,
-                    "content": result["choices"][0]["message"]["content"]
+                    "content": response.text
                 }
                 
             except Exception as e:

@@ -42,7 +42,7 @@ class TicketAnalysis(models.Model):
         AUTO = "auto", "Automatique"
     
     ticket = models.OneToOneField(Ticket, on_delete=models.CASCADE, related_name='analysis')
-    intention = models.CharField(max_length=255)
+    intention = models.TextField()
     category = models.CharField(max_length=100)
     priority = models.CharField(max_length=20, choices=Priority.choices)
     ai_response = models.TextField()
