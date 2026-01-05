@@ -88,4 +88,49 @@ class ZammadAPIService:
         except requests.RequestException as e:
             logger.error(f"Erreur création article interne ticket {ticket_id}: {e}")
             raise
+            # Ajout dans zammad_api.py
+
+    def create_knowledge_base_answer(self, knowledge_base_id: int, title: str, content: str, internal: bool = True) -> Dict:
+        """Créer un article dans la base de connaissance"""
+        try:
+            data = {
+                "kb_locale_id": 1,
+                "title": title,
+                "content": content
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/api/v1/knowledge_bases/{knowledge_base_id}/answers",
+                headers=self.headers,
+                json=data
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # Rendre interne si demandé
+            if internal and result.get('id'):
+                self.make_answer_internal(knowledge_base_id, result['id'])
+            
+            return result
+        except requests.RequestException as e:
+            logger.error(f"Erreur création answer KB: {e}")
+            raise
+
+    def make_answer_internal(self, knowledge_base_id: int, answer_id: int) -> Dict:
+        """Rendre un article interne"""
+        try:
+            from datetime import datetime
+            data = {"internal_at": datetime.now().isoformat() + "Z"}
+            
+            response = requests.patch(
+                f"{self.base_url}/api/v1/knowledge_bases/{knowledge_base_id}/answers/{answer_id}",
+                headers=self.headers,
+                json=data
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f"Erreur rendre interne: {e}")
+            raise
+
 

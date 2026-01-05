@@ -31,4 +31,6 @@ urlpatterns = [
     path('leads/<int:lead_id>/', views.lead_detail, name='lead_detail'),
     path('leads/<int:lead_id>/reanalyze/', views.reanalyze_lead, name='reanalyze_lead'),
     path('leads/<int:lead_id>/update/', views.update_lead, name='update_lead'),
+    path('knowledge-base/create-article/', views.create_knowledge_article, name='create_knowledge_article'),
+    path('tickets/<int:ticket_id>/suggest-kb-article/', views.suggest_kb_article_from_ticket, name='suggest_kb_article'),
 ]

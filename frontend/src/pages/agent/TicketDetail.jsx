@@ -8,19 +8,14 @@ const TicketDetail = () => {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [creatingArticle, setCreatingArticle] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
+  const [kbSuggestion, setKbSuggestion] = useState(null);
+  const [kbLoading, setKbLoading] = useState(false);
+  const [kbCreating, setKbCreating] = useState(false);
 
   useEffect(() => {
-    setPageLoading(true);
-    api
-      .get(`/tickets/${id}/`)
+    api.get(`/tickets/${id}/`)
       .then((res) => setData(res.data))
-      .catch((err) => {
-        console.error("Error fetching ticket:", err);
-      })
-      .finally(() => {
-        setPageLoading(false);
-      });
+      .catch((err) => console.error("Error fetching ticket:", err));
   }, [id]);
 
   const analyzeTicket = async () => {
@@ -36,7 +31,6 @@ const TicketDetail = () => {
 
   const createInternalArticle = async () => {
     if (!analysis) return;
-
     setCreatingArticle(true);
     try {
       const articleBody = `
@@ -44,21 +38,15 @@ const TicketDetail = () => {
         <p><strong>Intention:</strong> ${analysis.intention}</p>
         <p><strong>Catégorie:</strong> ${analysis.category}</p>
         <p><strong>Priorité:</strong> ${analysis.priority}</p>
-        
         <h4>Réponse proposée:</h4>
-        <p>${analysis.ai_response.response}</p>
-        
+        <p>${analysis.ai_response?.response}</p>
         <h4>Solution:</h4>
-        <ul>
-          ${analysis.ai_response.solution.map((step) => `<li>${step}</li>`).join("")}
-        </ul>
+        <ul>${analysis.ai_response?.solution?.map((step) => `<li>${step}</li>`).join("") || ""}</ul>
       `;
-
       await api.post(`/tickets/${id}/internal-article/`, {
         subject: "Analyse IA - Note interne",
         body: articleBody,
       });
-
       alert("Article interne créé avec succès");
     } catch {
       alert("Erreur lors de la création de l'article");
@@ -66,35 +54,52 @@ const TicketDetail = () => {
     setCreatingArticle(false);
   };
 
+  const suggestKBArticle = async () => {
+    setKbLoading(true);
+    try {
+      const response = await api.post(`/tickets/${id}/suggest-kb-article/`);
+      setKbSuggestion(response.data.suggestion);
+    } catch (error) {
+      console.error('Erreur suggestion KB:', error);
+      alert('Erreur lors de la suggestion KB');
+    }
+    setKbLoading(false);
+  };
+
+  const createKBArticle = async () => {
+    setKbCreating(true);
+    try {
+      await api.post('/knowledge-base/create-article/', {
+        title: kbSuggestion.title,
+        content: kbSuggestion.content,
+        category: kbSuggestion.category
+      });
+      alert('Article créé avec succès dans la base de connaissance');
+      setKbSuggestion(null);
+    } catch {
+      alert('Erreur lors de la création de l\'article KB');
+    }
+    setKbCreating(false);
+  };
+
   const getStatusBadgeColor = (stateId) => {
     switch (stateId) {
-      case 1:
-        return "bg-green-100 text-green-800 border-green-200";
-      case 2:
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case 3:
-        return "bg-orange-100 text-orange-800 border-orange-200";
-      case 4:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+      case 1: return "bg-green-100 text-green-800 border-green-200";
+      case 2: return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case 3: return "bg-orange-100 text-orange-800 border-orange-200";
+      case 4: return "bg-gray-100 text-gray-800 border-gray-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const getStatusLabel = (stateId) => {
     switch (stateId) {
-      case 1:
-        return "En attente de cloture";
-      case 2:
-        return "Ouvert";
-      case 3:
-        return "Rappel en attente";
-      case 4:
-        return "En attente de Cloture";
-      case 5:
-        return "Clos";
-      default:
-        return stateId ? `Statut ${stateId}` : "Inconnu";
+      case 1: return "En attente de cloture";
+      case 2: return "Ouvert";
+      case 3: return "Rappel en attente";
+      case 4: return "En attente de Cloture";
+      case 5: return "Clos";
+      default: return stateId ? `Statut ${stateId}` : "Inconnu";
     }
   };
 
@@ -119,20 +124,15 @@ const TicketDetail = () => {
 
   const getPriorityLabel = (priority) => {
     switch (priority?.toLowerCase()) {
-      case "urgent":
-        return "Urgente";
-      case "high":
-        return "Élevée";
-      case "medium":
-        return "Moyenne";
-      case "low":
-        return "Faible";
-      default:
-        return priority || "Non définie";
+      case "urgent": return "Urgente";
+      case "high": return "Élevée";
+      case "medium": return "Moyenne";
+      case "low": return "Faible";
+      default: return priority || "Non définie";
     }
   };
 
-  if (pageLoading) {
+  if (!data) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
@@ -143,16 +143,13 @@ const TicketDetail = () => {
     );
   }
 
-  if (!data) {
+  if (!data.ticket) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <i className="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
           <p className="text-gray-600 text-lg">Ticket non trouvé</p>
-          <Link
-            to="/tickets"
-            className="mt-4 inline-block text-blue-600 hover:text-blue-800"
-          >
+          <Link to="/tickets" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
             Retour à la liste
           </Link>
         </div>
@@ -165,10 +162,7 @@ const TicketDetail = () => {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Link
-            to="/tickets"
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-4 transition-colors"
-          >
+          <Link to="/tickets" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-4 transition-colors">
             <i className="fas fa-arrow-left"></i>
             <span>Retour à la liste</span>
           </Link>
@@ -183,16 +177,10 @@ const TicketDetail = () => {
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
                   <i className="fas fa-hashtag text-gray-400"></i>
-                  <span className="font-mono">
-                    #{data.ticket.number || data.ticket.id}
-                  </span>
+                  <span className="font-mono">#{data.ticket.number || data.ticket.id}</span>
                 </div>
                 {data.ticket.state_id && (
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(
-                      data.ticket.state_id
-                    )}`}
-                  >
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(data.ticket.state_id)}`}>
                     {getStatusLabel(data.ticket.state_id)}
                   </span>
                 )}
@@ -220,7 +208,7 @@ const TicketDetail = () => {
           <button
             onClick={analyzeTicket}
             disabled={loading}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg disabled:opacity-50 transition-all font-medium"
           >
             {loading ? (
               <>
@@ -264,35 +252,21 @@ const TicketDetail = () => {
                   <i className="fas fa-exclamation-circle text-orange-600"></i>
                   <span className="text-sm font-medium text-gray-600">Priorité</span>
                 </div>
-                <span
-                  className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getPriorityBadgeColor(
-                    analysis.priority
-                  )}`}
-                >
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getPriorityBadgeColor(analysis.priority)}`}>
                   {getPriorityLabel(analysis.priority)}
                 </span>
               </div>
             </div>
 
             <div className="bg-blue-50 rounded-lg p-5 mb-4 border-l-4 border-blue-500">
-              <div className="flex items-center gap-2 mb-3">
-                <i className="fas fa-comment-dots text-blue-600"></i>
-                <h4 className="font-semibold text-blue-900 text-lg">
-                  Réponse à votre demande
-                </h4>
-              </div>
-              <p className="text-gray-800 leading-relaxed">{analysis.ai_response.response}</p>
+              <h4 className="font-semibold text-blue-900 text-lg mb-3">Réponse à votre demande</h4>
+              <p className="text-gray-800 leading-relaxed">{analysis.ai_response?.response}</p>
             </div>
 
             <div className="bg-green-50 rounded-lg p-5 mb-4 border-l-4 border-green-500">
-              <div className="flex items-center gap-2 mb-3">
-                <i className="fas fa-check-circle text-green-600"></i>
-                <h4 className="font-semibold text-green-900 text-lg">
-                  Solution proposée
-                </h4>
-              </div>
+              <h4 className="font-semibold text-green-900 text-lg mb-3">Solution proposée</h4>
               <ul className="space-y-2">
-                {analysis.ai_response.solution.map((step, index) => (
+                {analysis.ai_response?.solution?.map((step, index) => (
                   <li key={index} className="flex items-start gap-2 text-gray-800">
                     <i className="fas fa-check text-green-600 mt-1"></i>
                     <span>{step}</span>
@@ -301,23 +275,80 @@ const TicketDetail = () => {
               </ul>
             </div>
 
-            <button
-              onClick={createInternalArticle}
-              disabled={creatingArticle}
-              className="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium shadow-sm"
-            >
-              {creatingArticle ? (
-              <>
-                <i className="fas fa-spinner fa-spin"></i>
-                <span>Création...</span>
-              </>
-            ) : (
-              <>
-                <i className="fas fa-file-alt"></i>
-                <span>Créer article interne</span>
-              </>
-            )}
-            </button>
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={createInternalArticle}
+                disabled={creatingArticle}
+                className="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors font-medium shadow-sm"
+              >
+                {creatingArticle ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span>Création...</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-file-alt"></i>
+                    <span>Créer article interne</span>
+                  </>
+                )}
+              </button>
+
+              <div>
+                {!kbSuggestion ? (
+                  <button
+                    onClick={suggestKBArticle}
+                    disabled={kbLoading}
+                    className="inline-flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium shadow-sm"
+                  >
+                    {kbLoading ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i>
+                        <span>Analyse KB...</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-book"></i>
+                        <span>Suggérer article KB</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 mt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <i className="fas fa-book text-purple-600"></i>
+                      <h4 className="font-semibold text-purple-900">Suggestion Base de Connaissance</h4>
+                    </div>
+                    
+                    {kbSuggestion.should_create ? (
+                      <div>
+                        <p className="text-green-700 mb-2">✓ {kbSuggestion.reason}</p>
+                        <div className="bg-white p-3 rounded border mb-3">
+                          <h5 className="font-medium mb-1">{kbSuggestion.title}</h5>
+                          <p className="text-sm text-gray-600">Catégorie: {kbSuggestion.category}</p>
+                        </div>
+                        <button
+                          onClick={createKBArticle}
+                          disabled={kbCreating}
+                          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {kbCreating ? (
+                            <>
+                              <i className="fas fa-spinner fa-spin mr-2"></i>
+                              Création...
+                            </>
+                          ) : (
+                            'Créer l\'article KB'
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-gray-600">✗ {kbSuggestion.reason}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

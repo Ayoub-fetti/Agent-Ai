@@ -16,6 +16,8 @@ from django.utils import timezone
 import logging
 import uuid
 import threading
+from .services.knowledge_base_service import KnowledgeBaseService
+
 
 logger = logging.getLogger(__name__)
 
@@ -556,4 +558,160 @@ def dashboard_stats(request):
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_knowledge_article(request):
+    """Créer un article dans la base de connaissance"""
+    try:
+        kb_service = KnowledgeBaseService()
+        
+        title = request.data.get('title')
+        content = request.data.get('content')
+        category = request.data.get('category', 'Procédures Internes')
+        knowledge_base_id = request.data.get('knowledge_base_id', 1)
+        
+        if not title or not content:
+            return Response({'error': 'Titre et contenu requis'}, status=400)
+        
+        result = kb_service.create_knowledge_article(
+            title=title,
+            content=content,
+            category=category,
+            knowledge_base_id=knowledge_base_id
+        )
+        
+        return Response(result)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def suggest_kb_article_from_ticket(request, ticket_id):
+    """Suggérer un article KB basé sur un ticket"""
+    try:
+        ticket = Ticket.objects.get(zammad_id=ticket_id)
+        
+        # Récupérer l'analyse existante
+        if hasattr(ticket, 'analysis'):
+            analysis_data = {
+                'category': ticket.analysis.category,
+                'priority_label': ticket.analysis.get_priority_display(),
+                'ai_response': {'solution_steps': []}  # Simplifier pour l'exemple
+            }
+        else:
+            return Response({'error': 'Ticket non analysé'}, status=400)
+        
+        ticket_data = {
+            'title': ticket.title,
+            'body': ticket.body,
+            'status': ticket.status
+        }
+        
+        kb_service = KnowledgeBaseService()
+        suggestion = kb_service.suggest_knowledge_article(analysis_data, ticket_data)
+        
+        return Response(suggestion)
+        
+    except Ticket.DoesNotExist:
+        return Response({'error': 'Ticket non trouvé'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
 from django.db import models
+# Ajout rker-index=1 reference-tracker>à la fin de views.py
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_knowledge_article(request):
+    """Créer un article dans la base de connaissance"""
+    try:
+        from .services.zammad_api import ZammadAPIService
+        
+        title = request.data.get('title')
+        content = request.data.get('content')
+        category = request.data.get('category', 'Procédures Internes')
+        
+        if not title or not content:
+            return Response({'error': 'Titre et contenu requis'}, status=400)
+        
+        zammad_api = ZammadAPIService()
+        
+        # Créer l'article dans Zammad (KB ID par défaut = 1)
+        result = zammad_api.create_knowledge_base_answer(
+            knowledge_base_id=1,
+            title=title,
+            content=content,
+            internal=True
+        )
+        
+        return Response({
+            'success': True,
+            'message': 'Article créé avec succès',
+            'article': result
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def suggest_kb_article_from_ticket(request, ticket_id):
+    """Suggérer un article KB basé sur un ticket"""
+    try:
+        from .services.llm_client import LLMClient
+        
+        # Récupérer les données du ticket depuis Zammad
+        api = ZammadAPIService()
+        ticket_data = api.get_ticket_details(ticket_id)
+        
+        # Générer une suggestion avec l'IA
+        llm_client = LLMClient()
+        
+        prompt = f"""
+        Analyse ce ticket et détermine s'il mérite un article de base de connaissance.
+
+        TICKET:
+        - Titre: {ticket_data.get('title', '')}
+        - Contenu: {ticket_data.get('body', '')}
+
+        CRITÈRES pour créer un article:
+        - Problème technique récurrent
+        - Solution réutilisable
+        - Procédure importante
+
+        RÉPONDS EN JSON:
+        {{
+            "should_create": true/false,
+            "reason": "Raison de la décision",
+            "title": "Titre de l'article si recommandé",
+            "content": "<p>Contenu HTML détaillé avec solution</p>",
+            "category": "Procédures Internes"
+        }}
+        """
+        
+        result = llm_client.call_api(prompt, "Tu es un expert en documentation. Réponds uniquement en JSON.")
+        
+        if not result.get('success'):
+            return Response({'error': 'Erreur IA'}, status=400)
+        
+        # Parser la réponse
+        import json
+        try:
+            suggestion = json.loads(result['content'].strip().replace('```json', '').replace('```', ''))
+        except:
+            suggestion = {
+                "should_create": False,
+                "reason": "Impossible d'analyser le ticket",
+                "title": "",
+                "content": "",
+                "category": "Procédures Internes"
+            }
+        
+        return Response({'suggestion': suggestion})
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+

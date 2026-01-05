@@ -51,5 +51,9 @@ export const createUser = (data) => api.post('/admin/users/create/', data);
 export const updateUserRole = (userId, data) => api.patch(`/admin/users/${userId}/role/`, data);
 export const toggleUserStatus = (userId) => api.patch(`/admin/users/${userId}/toggle/`);
 export const resetUserPassword = (userId, password) => api.post(`/admin/users/${userId}/reset-password/`, { password });
+// Ajout dans services/api.js
+export const suggestKBArticle = (ticketId) => api.post(`/tickets/${ticketId}/suggest-kb-article/`);
+export const createKBArticle = (data) => api.post('/knowledge-base/create-article/', data);
+
 
 export default api;

@@ -5,6 +5,8 @@ from django.utils import timezone
 from ..models import Ticket, TicketAnalysis
 from .llm_client import LLMClient
 from .zammad_api import ZammadAPIService
+from .knowledge_base_service import KnowledgeBaseService
+
 
 logger = logging.getLogger(__name__)
 
@@ -12,25 +14,36 @@ class TicketAnalyzerService:
     def __init__(self):
         self.llm_client = LLMClient()
         self.zammad_api = ZammadAPIService()
+        self.kb_service = KnowledgeBaseService()  # Nouveau service
     
     def analyze_ticket(self, ticket: Ticket) -> Dict[str, Any]:
-        """Analyse complète du ticket avec priorité et recommandations d'état"""
+        """Analyse complète du ticket avec suggestion d'article KB"""
         try:
-            # Analyse IA du contenu
+            # Analyse existante...
             analysis_result = self._send_to_llm(ticket)
             if not analysis_result['success']:
                 return {'success': False, 'error': analysis_result['error']}
             
-            # Parser l'analyse et extraire les informations
             parsed_analysis = self._parse_analysis(analysis_result['content'])
-            
-            # Générer la réponse IA
             ai_response_structured = self._generate_response(ticket, parsed_analysis)
-            
-            # Sauvegarder l'analyse
             analysis_obj = self._save_analysis(ticket, parsed_analysis, str(ai_response_structured))
             
-            return {
+            # NOUVEAU: Suggérer un article de base de connaissance
+            kb_suggestion = None
+            if parsed_analysis.get('category') in ['technique', 'facturation']:
+                try:
+                    ticket_data = {
+                        'title': ticket.title,
+                        'body': ticket.body,
+                        'status': ticket.status
+                    }
+                    kb_suggestion = self.kb_service.suggest_knowledge_article(
+                        parsed_analysis, ticket_data
+                    )
+                except Exception as e:
+                    logger.warning(f"Erreur suggestion KB: {e}")
+            
+            result = {
                 'success': True,
                 'analysis': {
                     'id': analysis_obj.id,
@@ -48,9 +61,15 @@ class TicketAnalyzerService:
                         'solution': ai_response_structured.get('solution_steps', [])
                     }
                 },
-                'ai_response': str(ai_response_structured),  # Changé ici
+                'ai_response': str(ai_response_structured),
                 'ready_for_publish': True
             }
+            
+            # Ajouter la suggestion KB si disponible
+            if kb_suggestion and kb_suggestion.get('success'):
+                result['kb_suggestion'] = kb_suggestion['suggestion']
+            
+            return result
             
         except Exception as e:
             logger.error(f"Erreur analyse ticket {ticket.zammad_id}: {str(e)}")
