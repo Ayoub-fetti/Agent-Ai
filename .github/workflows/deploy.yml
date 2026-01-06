@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ayoub-fetti/agent-ai
+  IMAGE_NAME: ${{ github.actor }}/agent-ai  
 
 jobs:
   build-and-deploy:
