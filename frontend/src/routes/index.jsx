@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import ProtectedRoute from "./ProtectedRoute";
+import Layout from "../components/Layout";
 import Login from "../pages/auth/login";
 import AdminDashboard from "../pages/admin/dashboard";
 import AgentDashboard from "../pages/agent/dashboard";
@@ -15,70 +16,72 @@ const AppRoutes = () => {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          user ? <Navigate to={getRouteByRole(user.role)} replace /> : <Login />
-        }
-      />
+    <Layout>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            user ? <Navigate to={getRouteByRole(user.role)} replace /> : <Login />
+          }
+        />
 
-      <Route
-        path="/tickets"
-        element={
-          <ProtectedRoute allowedRoles={["AGENT TECHNIQUE"]}>
-            <TicketList />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tickets/:id"
-        element={
-          <ProtectedRoute allowedRoles={["AGENT TECHNIQUE"]}>
-            <TicketDetail />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/tickets"
+          element={
+            <ProtectedRoute allowedRoles={["AGENT TECHNIQUE", "ADMIN"]}>
+              <TicketList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tickets/:id"
+          element={
+            <ProtectedRoute allowedRoles={["AGENT TECHNIQUE", "ADMIN"]}>
+              <TicketDetail />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["ADMIN"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/agent/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["AGENT TECHNIQUE"]}>
-            <AgentDashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/agent/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["AGENT TECHNIQUE", "ADMIN"]}>
+              <AgentDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/commercial/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["AGENT COMMERCIAL"]}>
-            <CommercialDashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/commercial/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["AGENT COMMERCIAL", "ADMIN"]}>
+              <CommercialDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route path="/unauthorized" element={<div>Accès non autorisé</div>} />
-      <Route 
-        path="/" 
-        element={
-          user ? (
-            <Navigate to={getRouteByRole(user.role)} replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        } 
-      />
-    </Routes>
+        <Route path="/unauthorized" element={<div>Accès non autorisé</div>} />
+        <Route 
+          path="/" 
+          element={
+            user ? (
+              <Navigate to={getRouteByRole(user.role)} replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
+      </Routes>
+    </Layout>
   );
 };
 

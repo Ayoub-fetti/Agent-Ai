@@ -280,13 +280,6 @@ const AgentDashboard = () => {
               <i className="fas fa-ticket-alt"></i>
               Voir les Tickets
             </Link>
-            <button
-              onClick={logout}
-              className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
-            >
-              <i className="fas fa-sign-out-alt"></i>
-              Déconnexion
-            </button>
           </div>
         </div>
 

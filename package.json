@@ -1,0 +1,14 @@
+{
+  "name": "agent-ai",
+  "version": "1.0.0",
+  "description": "Agent AI Docker Management",
+  "scripts": {
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f",
+    "docker:restart": "docker compose restart",
+    "docker:clean": "docker compose down -v --rmi all"
+  },
+  "private": true
+}

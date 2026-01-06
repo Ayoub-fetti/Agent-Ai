@@ -225,12 +225,6 @@ const CommercialDashboard = () => {
                 <i className="fas fa-search"></i>
                 Rechercher des leads
               </button>
-              <button
-                onClick={logout}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-              >
-                Déconnexion
-              </button>
             </div>
           </div>
         </div>
