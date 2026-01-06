@@ -35,15 +35,35 @@ class ZammadSyncService:
             raise
     
     def _map_zammad_to_model(self, data: dict) -> Ticket:
+        # Mapping des statuts Zammad vers Agent AI
+        zammad_status = str(data.get('state', '')).lower()
+        
+        status_mapping = {
+            'new': 'nouveau',
+            'nouveau': 'nouveau',
+            'open': 'ouvert',
+            'ouvert': 'ouvert',
+            'pending reminder': 'rappel_en_attente',
+            'rappel en attente': 'rappel_en_attente',
+            'pending close': 'en_attente_de_cloture',
+            'en attente de clôture': 'en_attente_de_cloture',
+            'closed': 'cloture',
+            'fermé': 'cloture',
+            'cloture': 'cloture'
+        }
+        
+        mapped_status = status_mapping.get(zammad_status, 'nouveau')
+        
         return Ticket(
             zammad_id=data['id'],
             title=data.get('title', ''),
             body=data.get('body', ''),
-            status=data.get('state', 'new'),
+            status=mapped_status,  # Utiliser le statut mappé
             customer_email=data.get('customer', {}).get('email', ''),
             created_at=self._parse_datetime(data.get('created_at')),
             updated_at=self._parse_datetime(data.get('updated_at'))
         )
+
     
     def _parse_datetime(self, date_str: str) -> datetime:
         if date_str:

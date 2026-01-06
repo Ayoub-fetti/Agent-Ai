@@ -14,7 +14,7 @@ class ZammadAPIService:
             'Content-Type': 'application/json'
         }
     
-    def get_tickets(self, limit: int = 50) -> List[Dict]:
+    def get_tickets(self, limit: int = 500) -> List[Dict]:
         try:
             response = requests.get(
                 f"{self.base_url}/api/v1/tickets/search",
@@ -104,28 +104,40 @@ class ZammadAPIService:
             raise
 
     def create_knowledge_base_answer(self, category_id: int, title: str, content: str, internal: bool = True) -> Dict:
-        """Créer un article dans la base de connaissance"""
+        """Créer un article dans la base de connaissance - Format Zammad correct"""
         try:
             data = {
-                "kb_locale_id": 1,
                 "category_id": category_id,
-                "title": title,
-                "content": content
+                "translations_attributes": [
+                    {
+                        "content_attributes": {
+                            "body": content
+                        },
+                        "kb_locale_id": 1,
+                        "title": title
+                    }
+                ]
             }
             
             response = requests.post(
-                f"{self.base_url}/api/v1/knowledge_bases/answers",
+                f"{self.base_url}/api/v1/knowledge_bases/1/answers",  # ID de votre KB = 1
                 headers=self.headers,
                 json=data
             )
+            
             response.raise_for_status()
             result = response.json()
             
+            # Rendre l'article interne si demandé
             if internal and result.get('id'):
-                self.make_answer_internal(result['id'])
+                requests.post(
+                    f"{self.base_url}/api/v1/knowledge_bases/1/answers/{result['id']}/internal",
+                    headers=self.headers
+                )
             
             return result
-        except requests.RequestException as e:
+            
+        except Exception as e:
             logger.error(f"Erreur création answer KB: {e}")
             raise
 

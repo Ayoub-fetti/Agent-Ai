@@ -16,6 +16,8 @@ class LLMClient:
         self.max_retries = 3
     
     def call_api(self, prompt: str, system_prompt: str = "", model: str = "meta-llama/llama-3.2-3b-instruct:free") -> Dict[str, Any]:
+        logger.info(f"Using API key: {self.api_key[:20]}...")
+        
         for attempt in range(self.max_retries):
             try:
                 payload = {
@@ -31,12 +33,15 @@ class LLMClient:
                     headers={
                         "Authorization": f"Bearer {self.api_key}",
                         "Content-Type": "application/json",
-                        "HTTP-Referer": "http://localhost:8000",
+                        "HTTP-Referer": "https://agent-ai.local",
                         "X-Title": "Agent-AI"
                     },
                     json=payload,
                     timeout=self.timeout
                 )
+                
+                logger.info(f"Response status: {response.status_code}")
+                logger.info(f"Response text: {response.text}")
                 
                 response.raise_for_status()
                 result = response.json()

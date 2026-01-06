@@ -30,15 +30,15 @@ const TicketList = () => {
   const getstatusLabel = (stateId) => {
     switch (stateId) {
       case 1:
-        return "En attente de cloture";
+        return "Nouveau";           // Au lieu de "En attente de cloture"
       case 2:
         return "Ouvert";
       case 3:
         return "Rappel en attente";
       case 4:
-        return "En attente de Cloture";
+        return "En attente de clôture";
       case 5:
-        return "Clos";
+        return "Fermé";
       default:
         return stateId ? `Statut ${stateId}` : "Inconnu";
     }

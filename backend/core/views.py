@@ -12,6 +12,7 @@ from .services.zammad_sync import ZammadSyncService
 from .models import User, Ticket
 from .serializers import LoginSerializer, UserSerializer, CreateUserSerializer, TicketSerializer
 from .services.zammad_api import ZammadAPIService
+from .services.ticket_analyzer import TicketAnalyzerService
 from django.utils import timezone
 import logging
 import uuid

@@ -13,15 +13,16 @@ class User(AbstractUser):
 
 class Ticket(models.Model):
     class Status(models.TextChoices):
-        NEW = "new", "Nouveau"
-        OPEN = "open", "Ouvert"
-        PENDING = "pending", "En attente"
-        CLOSED = "closed", "Fermé"
+        NEW = "nouveau", "Nouveau"
+        OPEN = "ouvert", "Ouvert" 
+        PENDING_REMINDER = "rappel_en_attente", "Rappel en attente"
+        PENDING_CLOSE = "en_attente_de_cloture", "En attente de clôture"
+        CLOSED = "cloture", "Clôturé"
     
     zammad_id = models.IntegerField(unique=True)
     title = models.CharField(max_length=255)
     body = models.TextField()
-    status = models.CharField(max_length=20, choices=Status.choices)
+    status = models.CharField(max_length=25, choices=Status.choices)  # Augmenté à 25
     customer_email = models.EmailField()
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
@@ -29,6 +30,7 @@ class Ticket(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
 
 class TicketAnalysis(models.Model):
     class Priority(models.TextChoices):
