@@ -14,21 +14,34 @@ class ZammadAPIService:
             'Content-Type': 'application/json'
         }
     
-    def get_tickets(self, limit: int = 500) -> List[Dict]:
+    def get_tickets(self, limit: int = 1000) -> List[Dict]:
         try:
-            response = requests.get(
-                f"{self.base_url}/api/v1/tickets/search",
-                headers=self.headers,
-                params={
-                    'query': 'state_id:[1 TO 3]',
-                    'limit': limit
-                }
-            )
-            response.raise_for_status()
-            return response.json()
+            all_tickets = []
+            page = 1
+            per_page = 100
+            
+            while len(all_tickets) < limit:
+                response = requests.get(
+                    f"{self.base_url}/api/v1/tickets",
+                    headers=self.headers,
+                    params={'page': page, 'per_page': per_page}
+                )
+                response.raise_for_status()
+                tickets = response.json()
+                
+                if not tickets:  # Plus de tickets
+                    break
+                    
+                # Filtrer pour états 1, 2, 3 seulement
+                filtered = [t for t in tickets if t.get('state_id') in [1, 2, 3]]
+                all_tickets.extend(filtered)
+                page += 1
+                
+            return all_tickets[:limit]
         except requests.RequestException as e:
             logger.error(f"Erreur tickets: {e}")
             raise
+
 
     def get_ticket_details(self, ticket_id: int) -> Dict:
         try:
