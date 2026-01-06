@@ -131,12 +131,11 @@ Format :
         self,
         title: str,
         content: str,
-        category: str = "Procédures Internes",
+        category: str = "Agent-AI",
         knowledge_base_id: int = 1
     ) -> Dict[str, Any]:
         """
         Crée un article de base de connaissance dans Zammad.
-        Signature COMPATIBLE avec la view.
         """
         try:
             if not title or not content:
@@ -145,15 +144,8 @@ Format :
                     "error": "Titre et contenu requis"
                 }
 
-            # Mapping catégories → category_id Zammad
-            category_mapping = {
-                "Procédures Internes": 1,
-                "commercial": 1,
-                "technique": 2,
-                "support": 3,
-            }
-
-            category_id = category_mapping.get(category, 1)
+            # Obtenir ou créer la catégorie Agent-AI
+            category_id = self.zammad_api.get_or_create_ai_category()
 
             result = self.zammad_api.create_knowledge_base_answer(
                 category_id=category_id,
@@ -165,7 +157,7 @@ Format :
             return {
                 "success": True,
                 "article_id": result.get("id"),
-                "message": "Article créé avec succès"
+                "message": f"Article créé dans la catégorie Agent-AI (ID: {category_id})"
             }
 
         except Exception as e:

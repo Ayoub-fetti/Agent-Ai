@@ -157,3 +157,42 @@ class ZammadAPIService:
         except requests.RequestException as e:
             logger.error(f"Erreur rendre interne: {e}")
             raise
+    def create_knowledge_base_category(self, title: str, icon: str = "f115") -> Dict:
+        """Créer une nouvelle catégorie dans la base de connaissance"""
+        try:
+            data = {
+                "category_icon": icon,
+                "parent_id": "",
+                "translations_attributes": [
+                    {
+                        "content_attributes": {
+                            "body": ""
+                        },
+                        "kb_locale_id": 1,
+                        "title": title
+                    }
+                ]
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/api/v1/knowledge_bases/1/categories",
+                headers=self.headers,
+                json=data
+            )
+            
+            response.raise_for_status()
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Erreur création catégorie KB: {e}")
+            raise
+
+    def get_or_create_ai_category(self) -> int:
+        """Obtenir ou créer la catégorie 'Agent-AI'"""
+        try:
+            # Essayer de créer la catégorie Agent-AI
+            category = self.create_knowledge_base_category("Agent-AI", "f085")
+            return category.get('id', 1)
+        except:
+            # Si elle existe déjà, utiliser l'ID par défaut ou chercher
+            return 1  # Fallback sur catégorie existante

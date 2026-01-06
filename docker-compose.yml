@@ -25,9 +25,9 @@ services:
       - DB_PORT=5432
       - ADMIN_EMAIL=admin@example.com
       - ADMIN_PASSWORD=admin123
-      - ZAMMAD_URL=https://perfeo.duckdns.org
-      - TOKEN_ZAMMAD=dVU8kWcw-fjVx-gi64FMBDxr3-j-pHPqcnip7y3oBjXeX5OcY6oY3S4NgyxeC7uw
-      - OPEN_ROUTER_API_KEY=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
+      - ZAMMAD_URL=https://helpdesk.metrikx.energy/
+      - TOKEN_ZAMMAD=fHsCML88wnPrmpPaO1MruTat1kZEDbkzu5HsN4ENRVIkmc8sR87I0Jy7koKzldJs
+      - OPEN_ROUTER_API_KEY=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
 
     volumes:
       - ./backend:/app

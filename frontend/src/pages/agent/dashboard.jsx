@@ -284,7 +284,7 @@ const AgentDashboard = () => {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-8">
           {/* Total Tickets */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
@@ -334,7 +334,7 @@ const AgentDashboard = () => {
           </div>
 
           {/* Tickets Clos */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+          {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Tickets Clos</p>
@@ -347,7 +347,7 @@ const AgentDashboard = () => {
             <div className="mt-4 flex items-center text-sm">
               <span className="text-gray-500">Résolus et fermés</span>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Charts Grid */}

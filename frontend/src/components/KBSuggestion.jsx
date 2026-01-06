@@ -1,6 +1,8 @@
 // Nouveau composant: src/components/KBSuggestion.jsx
 import { useState } from 'react';
 import { suggestKBArticle, createKBArticle } from '../services/api';
+import { notify } from '../services/notifications';
+
 
 const KBSuggestion = ({ ticketId, analysis }) => {
   const [suggestion, setSuggestion] = useState(null);
@@ -12,8 +14,12 @@ const KBSuggestion = ({ ticketId, analysis }) => {
     try {
       const response = await suggestKBArticle(ticketId);
       setSuggestion(response.data.suggestion);
+      notify.info("Suggestion générée avec succès");
+
     } catch (error) {
       console.error('Erreur suggestion KB:', error);
+      notify.error("Erreur lors de la génération de la suggestion");
+
     }
     setLoading(false);
   };
@@ -21,15 +27,21 @@ const KBSuggestion = ({ ticketId, analysis }) => {
   const createArticle = async () => {
     setCreating(true);
     try {
-      await createKBArticle({
+      const response = await createKBArticle({
         title: suggestion.title,
         content: suggestion.content,
         category: suggestion.category
       });
-      alert('Article créé avec succès dans la base de connaissance');
-      setSuggestion(null);
+      if (response.data.success) {
+        notify.success(`Article créé avec succès ! ID: ${response.data.article_id}`);
+        setSuggestion(null);
+      } else {
+        notify.error(response.data.error || "Erreur lors de la création");
+      }
     } catch (error) {
-      alert('Erreur lors de la création de l\'article');
+      notify.error('Erreur lors de la création de l\'article');
+      console.error("Error creating article:", error);
+
     }
     setCreating(false);
   };

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../../services/api";
+import { notify} from "../../services/notifications";
 
 const TicketDetail = () => {
   const { id } = useParams();
@@ -23,8 +24,10 @@ const TicketDetail = () => {
     try {
       const response = await api.post(`/tickets/${id}/analyze/`);
       setAnalysis(response.data.analysis);
-    } catch {
-      alert("Erreur lors de l'analyse");
+      notify.success("Analyse terminée avec succès !");
+    } catch (error) {
+      notify.error("Erreur lors de l'analyse du ticket");
+      console.error("Error analyzing ticket:", error);
     }
     setLoading(false);
   };
@@ -47,10 +50,11 @@ const TicketDetail = () => {
         subject: "Analyse IA - Note interne",
         body: articleBody,
       });
-      alert("Article interne créé avec succès");
-    } catch {
-      alert("Erreur lors de la création de l'article");
-    }
+      notify.success("Article interne créé avec succès !");
+    } catch (error) {
+      notify.error("Erreur lors de la création de l'article interne");
+      console.error("Error creating internal article:", error);
+      }
     setCreatingArticle(false);
   };
 
@@ -59,9 +63,10 @@ const TicketDetail = () => {
     try {
       const response = await api.post(`/tickets/${id}/suggest-kb-article/`);
       setKbSuggestion(response.data.suggestion);
+      notify.info("Suggestion de base de connaissance générée");
     } catch (error) {
       console.error('Erreur suggestion KB:', error);
-      alert('Erreur lors de la suggestion KB');
+      notify.error('Erreur lors de la génération de la suggestion KB');
     }
     setKbLoading(false);
   };
@@ -69,15 +74,20 @@ const TicketDetail = () => {
   const createKBArticle = async () => {
     setKbCreating(true);
     try {
-      await api.post('/knowledge-base/create-article/', {
+      const response = await api.post('/knowledge-base/create-article/', {
         title: kbSuggestion.title,
         content: kbSuggestion.content,
         category: kbSuggestion.category
       });
-      alert('Article créé avec succès dans la base de connaissance');
-      setKbSuggestion(null);
-    } catch {
-      alert('Erreur lors de la création de l\'article KB');
+        if (response.data.success) {
+        notify.success(`Article créé avec succès ! ID: ${response.data.article_id}`);
+        setKbSuggestion(null);
+      } else {
+        notify.error(response.data.error || "Erreur lors de la création");
+      }
+    } catch (error) {
+      notify.error('Erreur lors de la création de l\'article KB');
+      console.error("Error creating KB article:", error);
     }
     setKbCreating(false);
   };
