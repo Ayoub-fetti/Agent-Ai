@@ -49,11 +49,11 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
           
           # Stop existing containers
-          docker-compose -f /home/ubuntu/agent-ai/docker-compose.prod.yml down || true
+          docker compose -f /home/ubuntu/agent-ai/docker-compose.prod.yml down || true
           
           # Pull latest images
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}/backend:latest
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}/frontend:latest
           
           # Start new containers
-          docker-compose -f /home/ubuntu/agent-ai/docker-compose.prod.yml up -d
+          docker compose -f /home/ubuntu/agent-ai/docker-compose.prod.yml up -d
