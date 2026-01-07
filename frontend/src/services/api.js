@@ -55,5 +55,12 @@ export const resetUserPassword = (userId, password) => api.post(`/admin/users/${
 export const suggestKBArticle = (ticketId) => api.post(`/tickets/${ticketId}/suggest-kb-article/`);
 export const createKBArticle = (data) => api.post('/knowledge-base/create-article/', data);
 
+// Client Locations Management
+export const getClientLocations = () => api.get('/client-locations/');
+export const createClientLocation = (data) => api.post('/client-locations/', data);
+export const updateClientLocation = (locationId, data) => api.put(`/client-locations/${locationId}/`, data);
+export const deleteClientLocation = (locationId) => api.delete(`/client-locations/${locationId}/`);
+
+
 
 export default api;

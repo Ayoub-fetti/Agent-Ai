@@ -18,6 +18,8 @@ import logging
 import uuid
 import threading
 from .services.knowledge_base_service import KnowledgeBaseService
+from .models import ClientLocation
+
 
 
 logger = logging.getLogger(__name__)
@@ -620,3 +622,61 @@ def suggest_kb_article_from_ticket(request, ticket_id):
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_lead_coordinates(request, lead_id):
+    try:
+        lead = Lead.objects.get(id=lead_id)
+        lead.latitude = request.data.get('latitude')
+        lead.longitude = request.data.get('longitude')
+        lead.save()
+        return Response({'success': True})
+    except Lead.DoesNotExist:
+        return Response({'error': 'Lead not found'}, status=404)
+
+
+from .models import ClientLocation
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def client_locations(request):
+    if request.method == 'GET':
+        locations = ClientLocation.objects.all()
+        data = [{
+            'id': loc.id,
+            'name': loc.name,
+            'description': loc.description,
+            'latitude': float(loc.latitude),
+            'longitude': float(loc.longitude)
+        } for loc in locations]
+        return Response(data)
+    
+    elif request.method == 'POST':
+        location = ClientLocation.objects.create(
+            name=request.data['name'],
+            description=request.data.get('description', ''),
+            latitude=request.data['latitude'],
+            longitude=request.data['longitude']
+        )
+        return Response({'id': location.id, 'success': True})
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def client_location_detail(request, location_id):
+    try:
+        location = ClientLocation.objects.get(id=location_id)
+        
+        if request.method == 'PUT':
+            location.name = request.data['name']
+            location.description = request.data.get('description', '')
+            location.latitude = request.data['latitude']
+            location.longitude = request.data['longitude']
+            location.save()
+            return Response({'success': True})
+            
+        elif request.method == 'DELETE':
+            location.delete()
+            return Response({'success': True})
+            
+    except ClientLocation.DoesNotExist:
+        return Response({'error': 'Location not found'}, status=404)

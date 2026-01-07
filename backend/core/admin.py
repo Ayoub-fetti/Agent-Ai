@@ -14,7 +14,7 @@ class LeadAdmin(admin.ModelAdmin):
             'fields': ('lead_type', 'project_type', 'title', 'description', 'organization_name')
         }),
         ('Contact', {
-            'fields': ('email', 'phone', 'website', 'city', 'country')
+            'fields': ('email', 'phone', 'website', 'city', 'country', 'latitude', 'longitude')
         }),
         ('Marché public', {
             'fields': ('market_date', 'budget', 'market_url'),

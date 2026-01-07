@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-# Create your models here.
 
 class User(AbstractUser):
     class Role(models.TextChoices):
@@ -22,7 +21,7 @@ class Ticket(models.Model):
     zammad_id = models.IntegerField(unique=True)
     title = models.CharField(max_length=255)
     body = models.TextField()
-    status = models.CharField(max_length=25, choices=Status.choices)  # Augmenté à 25
+    status = models.CharField(max_length=25, choices=Status.choices)
     customer_email = models.EmailField()
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
@@ -30,7 +29,6 @@ class Ticket(models.Model):
     
     class Meta:
         ordering = ['-created_at']
-
 
 class TicketAnalysis(models.Model):
     class Priority(models.TextChoices):
@@ -51,7 +49,6 @@ class TicketAnalysis(models.Model):
     publish_mode = models.CharField(max_length=20, choices=PublishMode.choices, default=PublishMode.SUGGESTION)
     published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-
 
 class Lead(models.Model):
     class LeadType(models.TextChoices):
@@ -94,7 +91,7 @@ class Lead(models.Model):
     # Informations du marché public ou entreprise
     title = models.CharField(max_length=500)
     description = models.TextField(blank=True)
-    organization_name = models.CharField(max_length=255)  # Maître d'ouvrage ou nom entreprise
+    organization_name = models.CharField(max_length=255)
     website = models.URLField(blank=True, null=True)
     phone = models.CharField(max_length=50, blank=True)
     email = models.EmailField(blank=True, null=True)
@@ -113,14 +110,14 @@ class Lead(models.Model):
     company_size = models.CharField(max_length=20, choices=CompanySize.choices, default=CompanySize.INCONNU)
     
     # Scoring IA
-    score = models.IntegerField(default=0)  # Score de 0 à 100
+    score = models.IntegerField(default=0)
     temperature = models.CharField(max_length=10, choices=Temperature.choices, default=Temperature.FROID)
-    score_justification = models.TextField(blank=True)  # Justification du score
+    score_justification = models.TextField(blank=True)
     
     # Métadonnées
     source_url = models.URLField(blank=True, null=True)
-    keywords_found = models.JSONField(default=list, blank=True)  # Mots-clés détectés
-    raw_data = models.JSONField(default=dict, blank=True)  # Données brutes de la source
+    keywords_found = models.JSONField(default=list, blank=True)
+    raw_data = models.JSONField(default=dict, blank=True)
     
     # Statut
     is_contacted = models.BooleanField(default=False)
@@ -143,3 +140,14 @@ class Lead(models.Model):
     
     def __str__(self):
         return f"{self.organization_name} - {self.title[:50]}"
+
+class ClientLocation(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    latitude = models.DecimalField(max_digits=10, decimal_places=8)
+    longitude = models.DecimalField(max_digits=11, decimal_places=8)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.name

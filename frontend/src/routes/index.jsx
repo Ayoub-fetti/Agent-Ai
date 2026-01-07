@@ -6,6 +6,7 @@ import Login from "../pages/auth/login";
 import AdminDashboard from "../pages/admin/dashboard";
 import AgentDashboard from "../pages/agent/dashboard";
 import CommercialDashboard from "../pages/commercial/dashboard";
+import ClientsMap from "../pages/admin/ClientsMap";
 import { getRouteByRole } from "./roleRoutes";
 import TicketList from "../pages/agent/TicketList";
 import TicketDetail from "../pages/agent/TicketDetail";
@@ -47,6 +48,15 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={["ADMIN"]}>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/clients-map"
+          element={
+            <ProtectedRoute allowedRoles={["ADMIN"]}>
+              <ClientsMap />
             </ProtectedRoute>
           }
         />

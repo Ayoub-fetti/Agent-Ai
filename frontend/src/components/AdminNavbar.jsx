@@ -1,9 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const AdminNavbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
@@ -11,41 +12,70 @@ const AdminNavbar = () => {
   };
 
   const adminLinks = [
-    { to: '/admin/dashboard', label: 'Admin Dashboard' },
-    { to: '/agent/dashboard', label: 'Agent Dashboard' },
-    { to: '/commercial/dashboard', label: 'Commercial Dashboard' },
-    { to: '/tickets', label: 'Tickets' }
+    { to: '/admin/dashboard', label: 'Administrateur', icon: 'fa-solid fa-user-shield' },
+    { to: '/agent/dashboard', label: 'Agent Technique', icon: 'fa-solid fa-screwdriver-wrench' },
+    { to: '/commercial/dashboard', label: 'Agent Commercial', icon: 'fa-solid fa-briefcase' },
+    { to: '/tickets', label: 'Tickets', icon: 'fa-solid fa-ticket' },
+    { to: '/admin/clients-map', label: 'Carte Clients', icon: 'fa-solid fa-map-location-dot' },
   ];
 
   return (
-    <nav className="bg-white shadow-lg border-b">
-      <div className="max-w-7xl mx-auto px-4">
+    <nav className="bg-white border-b shadow-sm">
+      <div className="max-w-7xl mx-auto px-6">
         <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="text-xl font-bold text-green-600">
-              Agent AI - Admin
+
+          {/* Logo */}
+          <div className="flex items-center space-x-10">
+            <Link
+              to="/"
+              className="flex items-center space-x-2 text-green-600 font-bold text-lg"
+            >
+              <i className="fa-solid fa-robot text-xl"></i>
+              <span>Agent AI</span>
             </Link>
-            <div className="ml-10 flex space-x-8">
-              {adminLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="text-gray-700 hover:text-green-600 px-3 py-2 text-sm font-medium"
-                >
-                  {link.label}
-                </Link>
-              ))}
+
+            {/* Navigation links */}
+            <div className="hidden md:flex space-x-2">
+              {adminLinks.map((link) => {
+                const isActive = location.pathname === link.to;
+
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition
+                      ${
+                        isActive
+                          ? 'bg-green-100 text-green-700'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-green-600'
+                      }
+                    `}
+                  >
+                    <i className={`${link.icon} text-sm`}></i>
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-700">{user?.username} (Admin)</span>
+
+          {/* Right side */}
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-2 text-gray-700 text-sm">
+              <i className="fa-solid fa-circle-user text-lg"></i>
+              <span>{user?.username}</span>
+              <span className="text-xs text-gray-400">(Admin)</span>
+            </div>
+
             <button
               onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600"
+              className="flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm transition"
             >
-              Déconnexion
+              <i className="fa-solid fa-right-from-bracket"></i>
+              <span>Déconnexion</span>
             </button>
           </div>
+
         </div>
       </div>
     </nav>

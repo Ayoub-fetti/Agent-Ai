@@ -33,4 +33,8 @@ urlpatterns = [
     path('leads/<int:lead_id>/update/', views.update_lead, name='update_lead'),
     path('knowledge-base/create-article/', views.create_knowledge_article, name='create_knowledge_article'),
     path('tickets/<int:ticket_id>/suggest-kb-article/', views.suggest_kb_article_from_ticket, name='suggest_kb_article'),
+    path('leads/<int:lead_id>/coordinates/', views.update_lead_coordinates, name='update_lead_coordinates'),
+    path('client-locations/', views.client_locations, name='client_locations'),
+    path('client-locations/<int:location_id>/', views.client_location_detail, name='client_location_detail'),
+
 ]

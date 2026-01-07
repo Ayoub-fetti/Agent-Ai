@@ -8,44 +8,63 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Styles constants pour une meilleure organisation
   const styles = {
-    container: "min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative",
-    backgroundContainer: "fixed inset-0 overflow-hidden pointer-events-none z-0",
-    backgroundBlob1: "absolute -top-40 -right-40 w-80 h-80 bg-green-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob",
-    backgroundBlob2: "absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000",
-    backgroundBlob3: "absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-teal-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000",
-    contentWrapper: "relative z-10 w-full max-w-md",
-    logoContainer: "inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl shadow-lg mb-4 transform hover:scale-105 transition-transform duration-200",
-    card: "bg-white rounded-2xl shadow-2xl p-8 border border-gray-100",
-    title: "text-2xl font-bold text-gray-900 mb-2",
-    subtitle: "text-sm text-gray-500",
-    errorContainer: "mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start gap-3 animate-shake",
-    inputContainer: "relative",
-    inputIcon: "absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none",
-    input: "w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white",
-    inputPassword: "w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white",
-    passwordToggle: "absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-green-600 transition-colors",
-    checkbox: "w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 focus:ring-2",
-    link: "text-sm text-green-600 hover:text-green-800 font-medium transition-colors",
-    submitButton: "w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-4 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:from-green-700 hover:to-emerald-700 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:from-green-600 disabled:hover:to-emerald-600 flex items-center justify-center gap-2",
-    divider: "w-full border-t border-gray-300",
-    dividerText: "px-4 bg-white text-gray-500"
+    container:
+      "min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center px-4 relative",
+    backgroundContainer:
+      "fixed inset-0 overflow-hidden pointer-events-none z-0",
+    backgroundBlob1:
+      "absolute -top-40 -right-40 w-80 h-80 bg-green-400 rounded-full mix-blend-multiply blur-xl opacity-20 animate-blob",
+    backgroundBlob2:
+      "absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-400 rounded-full mix-blend-multiply blur-xl opacity-20 animate-blob animation-delay-2000",
+    backgroundBlob3:
+      "absolute top-1/2 left-1/2 w-80 h-80 bg-teal-400 rounded-full mix-blend-multiply blur-xl opacity-20 animate-blob animation-delay-4000",
+    contentWrapper:
+      "relative z-10 w-full max-w-md mt-4",
+    logoContainer:
+      "inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl shadow-lg mb-4",
+    card:
+      "bg-white rounded-2xl shadow-2xl p-8 border border-gray-100",
+    title:
+      "text-2xl font-bold text-gray-900 mb-1",
+    subtitle:
+      "text-sm text-gray-500",
+    errorContainer:
+      "mb-5 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex gap-3 animate-shake",
+    inputContainer:
+      "relative",
+    inputIcon:
+      "absolute inset-y-0 left-0 pl-4 mt-3 flex items-center pointer-events-none text-gray-400",
+    input:
+      "w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition",
+    inputError:
+      "border-red-400 focus:ring-red-500 focus:border-red-500",
+    inputPassword:
+      "w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition",
+    passwordToggle:
+      "absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-green-600 transition",
+    submitButton:
+      "w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition disabled:opacity-50 flex justify-center gap-2",
+    link:
+      "text-sm text-green-600 hover:text-green-800 font-medium",
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
     setError('');
     setLoading(true);
-    
+
     try {
       const user = await login(credentials);
       navigate(getRouteByRole(user.role));
-    } catch (err) {
-      setError('Identifiants invalides. Veuillez réessayer.');
+    } catch {
+      setError("Nom d'utilisateur ou mot de passe incorrect.");
     } finally {
       setLoading(false);
     }
@@ -53,212 +72,142 @@ const Login = () => {
 
   return (
     <div className={styles.container}>
-      {/* Background decoration avec couleurs vertes - Fixed pour rester en arrière-plan lors du scroll */}
+      {/* Background */}
       <div className={styles.backgroundContainer}>
         <div className={styles.backgroundBlob1}></div>
         <div className={styles.backgroundBlob2}></div>
         <div className={styles.backgroundBlob3}></div>
       </div>
 
-      {/* Contenu principal avec z-index pour être au-dessus des blobs */}
       <div className={styles.contentWrapper}>
-        {/* Logo/Brand Section */}
+        {/* Logo */}
         <div className="text-center mb-8">
           <div className={styles.logoContainer}>
-            <i className="fas fa-shield-alt text-white text-3xl"></i>
+            <i className="fas fa-robot text-white text-3xl"></i>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Agent AI</h1>
-          <p className="text-gray-600">Connectez-vous à votre espace de travail</p>
+          <h1 className="text-4xl font-bold text-gray-900">Agent AI</h1>
+          <p className="text-gray-600">Connectez-vous à votre espace</p>
         </div>
 
-        {/* Login Card */}
+        {/* Card */}
         <div className={styles.card}>
-          <div className="mb-6">
-            <h2 className={styles.title}>Connexion</h2>
-            <p className={styles.subtitle}>Entrez vos identifiants pour accéder</p>
-          </div>
+          <h2 className={styles.title}>Connexion</h2>
+          <p className={`${styles.subtitle} mb-5`}>
+            Entrez vos identifiants pour continuer
+          </p>
 
-          {/* Error Message */}
+          {/* Error */}
           {error && (
             <div className={styles.errorContainer}>
-              <i className="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-red-800">{error}</p>
-              </div>
-              <button
-                onClick={() => setError('')}
-                className="text-red-400 hover:text-red-600 transition-colors"
-                aria-label="Fermer le message d'erreur"
-              >
-                <i className="fas fa-times"></i>
+              <i className="fas fa-circle-exclamation text-red-500 mt-1"></i>
+              <p className="text-sm text-red-800 flex-1">{error}</p>
+              <button onClick={() => setError('')}>
+                <i className="fas fa-xmark text-red-400 hover:text-red-600"></i>
               </button>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username Field */}
+            {/* Username */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                <i className="fas fa-user mr-2 text-gray-400"></i>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
                 Nom d'utilisateur
               </label>
               <div className={styles.inputContainer}>
-                <div className={styles.inputIcon}>
-                  <i className="fas fa-user text-gray-400"></i>
-                </div>
+                <i className={`${styles.inputIcon} fas fa-user`}></i>
                 <input
-                  id="username"
+                  autoFocus
                   type="text"
-                  placeholder="Entrez votre nom d'utilisateur"
-                  value={credentials.username}
-                  onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-                  className={styles.input}
                   required
                   disabled={loading}
-                  autoComplete="username"
+                  value={credentials.username}
+                  onChange={(e) =>
+                    setCredentials({ ...credentials, username: e.target.value })
+                  }
+                  className={`${styles.input} ${
+                    error ? styles.inputError : ''
+                  }`}
+                  placeholder="Votre nom d'utilisateur"
                 />
               </div>
             </div>
 
-            {/* Password Field */}
+            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                <i className="fas fa-lock mr-2 text-gray-400"></i>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
                 Mot de passe
               </label>
               <div className={styles.inputContainer}>
-                <div className={styles.inputIcon}>
-                  <i className="fas fa-lock text-gray-400"></i>
-                </div>
+                <i className={`${styles.inputIcon} fas fa-lock`}></i>
                 <input
-                  id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Entrez votre mot de passe"
-                  value={credentials.password}
-                  onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-                  className={styles.inputPassword}
                   required
                   disabled={loading}
-                  autoComplete="current-password"
+                  value={credentials.password}
+                  onChange={(e) =>
+                    setCredentials({ ...credentials, password: e.target.value })
+                  }
+                  className={`${styles.inputPassword} ${
+                    error ? styles.inputError : ''
+                  }`}
+                  placeholder="Votre mot de passe"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className={styles.passwordToggle}
-                  disabled={loading}
-                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                 >
-                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  <i
+                    className={`fas ${
+                      showPassword
+                        ? 'fa-eye-slash text-green-600'
+                        : 'fa-eye'
+                    }`}
+                  ></i>
                 </button>
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
-            {/* <div className="flex items-center justify-between">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className={styles.checkbox}
-                  disabled={loading}
-                />
-                <span className="ml-2 text-sm text-gray-600">Se souvenir de moi</span>
-              </label>
-              <a
-                href="#"
-                className={styles.link}
-                onClick={(e) => {
-                  e.preventDefault();
-                  // TODO: Implémenter la fonctionnalité de mot de passe oublié
-                }}
-              >
-                Mot de passe oublié ?
-              </a>
-            </div> */}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={styles.submitButton}
-            >
+            {/* Submit */}
+            <button type="submit" disabled={loading} className={styles.submitButton}>
               {loading ? (
                 <>
                   <i className="fas fa-spinner fa-spin"></i>
-                  <span>Connexion en cours...</span>
+                  Connexion...
                 </>
               ) : (
                 <>
-                  <span>Se connecter</span>
+                  Se connecter
                   <i className="fas fa-arrow-right"></i>
                 </>
               )}
             </button>
           </form>
-
-          {/* Divider */}
-          <div className="mt-6 mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className={styles.divider}></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className={styles.dividerText}>Ou</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Info */}
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Besoin d'aide ?{' '}
-              <a href="#" className={styles.link}>
-                Contactez le support
-              </a>
-            </p>
-          </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
-            © 2026 Perfeo Agent AI. Tous droits réservés.
-          </p>
-        </div>
+        <p className="mt-6 text-center text-sm text-gray-500">
+          © 2026 Perfeo Agent AI. Tous droits réservés.
+        </p>
       </div>
 
-      {/* Custom animations */}
+      {/* Animations */}
       <style>{`
         @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
+          0% { transform: translate(0) scale(1); }
+          33% { transform: translate(30px,-50px) scale(1.1); }
+          66% { transform: translate(-20px,20px) scale(0.9); }
+          100% { transform: translate(0) scale(1); }
         }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
         @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-          20%, 40%, 60%, 80% { transform: translateX(5px); }
+          0%,100%{transform:translateX(0)}
+          20%,60%{transform:translateX(-6px)}
+          40%,80%{transform:translateX(6px)}
         }
-        .animate-shake {
-          animation: shake 0.5s;
-        }
+        .animate-shake { animation: shake .4s }
       `}</style>
     </div>
   );
