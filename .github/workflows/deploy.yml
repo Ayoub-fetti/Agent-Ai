@@ -44,6 +44,7 @@ jobs:
         username: ubuntu
         key: ${{ secrets.OVH_SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
+        envs: IMAGE_NAME_LOWER
         script: |
           # Login to GitHub Container Registry
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
@@ -52,8 +53,10 @@ jobs:
           docker compose -f /home/ubuntu/agent-ai/docker-compose.prod.yml down || true
           
           # Pull latest images
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}/backend:latest
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}/frontend:latest
+          docker pull ${{ env.REGISTRY }}/$IMAGE_NAME_LOWER/backend:latest
+          docker pull ${{ env.REGISTRY }}/$IMAGE_NAME_LOWER/frontend:latest
           
-          # Start new containers
+          # Set image names and start containers
+          export BACKEND_IMAGE=${{ env.REGISTRY }}/$IMAGE_NAME_LOWER/backend:latest
+          export FRONTEND_IMAGE=${{ env.REGISTRY }}/$IMAGE_NAME_LOWER/frontend:latest
           docker compose -f /home/ubuntu/agent-ai/docker-compose.prod.yml up -d
