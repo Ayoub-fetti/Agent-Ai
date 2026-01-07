@@ -27,7 +27,7 @@ services:
       - ADMIN_PASSWORD=admin123
       - ZAMMAD_URL=https://helpdesk.metrikx.energy/
       - TOKEN_ZAMMAD=fHsCML88wnPrmpPaO1MruTat1kZEDbkzu5HsN4ENRVIkmc8sR87I0Jy7koKzldJs
-      - OPEN_ROUTER_API_KEY=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
+      - OPEN_ROUTER_API_KEY=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
 
     volumes:
       - ./backend:/app

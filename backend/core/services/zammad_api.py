@@ -199,13 +199,9 @@ class ZammadAPIService:
         except Exception as e:
             logger.error(f"Erreur création catégorie KB: {e}")
             raise
-
     def get_or_create_ai_category(self) -> int:
-        """Obtenir ou créer la catégorie 'Agent-AI'"""
-        try:
-            # Essayer de créer la catégorie Agent-AI
-            category = self.create_knowledge_base_category("Agent-AI", "f085")
-            return category.get('id', 1)
-        except:
-            # Si elle existe déjà, utiliser l'ID par défaut ou chercher
-            return 1  # Fallback sur catégorie existante
+        """Retourne l'ID de la catégorie Agent-AI (ID: 55)"""
+        # Catégorie Agent-AI créée manuellement dans Zammad
+        logger.info("Utilisation de la catégorie Agent-AI (ID: 55)")
+        return 55
+
