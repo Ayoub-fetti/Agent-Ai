@@ -18,6 +18,10 @@ import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import api from '../../services/api';
 
 // Enregistrer les composants Chart.js
+// Enregistrer les composants Chart.js
+// Enregistrer les composants Chart.js
+// Enregistrer les composants Chart.js
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
