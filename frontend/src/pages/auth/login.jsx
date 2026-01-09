@@ -70,7 +70,7 @@ const Login = () => {
     <div
       className={styles.container}
       style={{
-        backgroundImage: "url('/assets/images/background.jpeg')",
+        backgroundImage: "url('/assets/images/background2.jpeg')",
       }}
     >
       {/* Overlay pour le contraste */}
@@ -86,7 +86,7 @@ const Login = () => {
               className="w-14 h-14 rounded-2xl shadow-lg mb-4 mx-auto"
             />
             <h1 className="text-4xl font-bold text-white">
-              Agent AI <span className="text-green-400">Perfeo</span>
+              Agent AI Perfeo
             </h1>
             <p className="text-white">Connectez-vous à votre espace</p>
           </div>
@@ -183,7 +183,7 @@ const Login = () => {
               ) : (
                 <>
                   Se connecter
-                  <i className="fas fa-arrow-right"></i>
+                  <i class="fa-solid fa-arrow-right-to-bracket mt-1"></i>
                 </>
               )}
             </button>
@@ -191,7 +191,7 @@ const Login = () => {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-sm text-white">
+        <p className="mt-6 mb-3 text-center text-xs font-semibold text-white">
           © 2026 Perfeo Agent AI. Tous droits réservés.
         </p>
       </div>
