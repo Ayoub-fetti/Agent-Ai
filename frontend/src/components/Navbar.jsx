@@ -61,8 +61,11 @@ const Navbar = () => {
               to="/"
               className="flex items-center space-x-2 text-green-600 font-bold text-lg"
             >
-              <i className="fa-solid fa-robot text-xl"></i>
-              <span>Agent AI</span>
+              <img
+                src="/assets/images/logo-ai.png"
+                alt='Agent Ai Logo'
+                className='w-8 h-8 rounded-lg'
+              />
             </Link>
 
             {/* Links */}

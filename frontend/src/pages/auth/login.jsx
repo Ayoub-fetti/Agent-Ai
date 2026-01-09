@@ -1,11 +1,14 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { getRouteByRole } from '../../routes/roleRoutes';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { getRouteByRole } from "../../routes/roleRoutes";
 
 const Login = () => {
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [error, setError] = useState('');
+  const [credentials, setCredentials] = useState({
+    username: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -14,7 +17,7 @@ const Login = () => {
 
   const styles = {
     container:
-      "min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center px-4 relative",
+      "min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center px-4 relative",
     backgroundContainer:
       "fixed inset-0 overflow-hidden pointer-events-none z-0",
     backgroundBlob1:
@@ -23,41 +26,34 @@ const Login = () => {
       "absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-400 rounded-full mix-blend-multiply blur-xl opacity-20 animate-blob animation-delay-2000",
     backgroundBlob3:
       "absolute top-1/2 left-1/2 w-80 h-80 bg-teal-400 rounded-full mix-blend-multiply blur-xl opacity-20 animate-blob animation-delay-4000",
-    contentWrapper:
-      "relative z-10 w-full max-w-md mt-4",
+    contentWrapper: "relative z-10 w-full max-w-md mt-4",
     logoContainer:
       "inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl shadow-lg mb-4",
-    card:
-      "bg-white rounded-2xl shadow-2xl p-8 border border-gray-100",
-    title:
-      "text-2xl font-bold text-gray-900 mb-1",
-    subtitle:
-      "text-sm text-gray-500",
+    card: "bg-white rounded-2xl shadow-2xl p-8 border border-gray-100",
+    title: "text-2xl font-bold text-gray-900 mb-1",
+    subtitle: "text-sm text-gray-500",
     errorContainer:
       "mb-5 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex gap-3 animate-shake",
-    inputContainer:
-      "relative",
+    inputContainer: "relative",
     inputIcon:
       "absolute inset-y-0 left-0 pl-4 mt-3 flex items-center pointer-events-none text-gray-400",
     input:
       "w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition",
-    inputError:
-      "border-red-400 focus:ring-red-500 focus:border-red-500",
+    inputError: "border-red-400 focus:ring-red-500 focus:border-red-500",
     inputPassword:
       "w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition",
     passwordToggle:
       "absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-green-600 transition",
     submitButton:
       "w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition disabled:opacity-50 flex justify-center gap-2",
-    link:
-      "text-sm text-green-600 hover:text-green-800 font-medium",
+    link: "text-sm text-green-600 hover:text-green-800 font-medium",
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
 
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
@@ -71,22 +67,29 @@ const Login = () => {
   };
 
   return (
-    <div className={styles.container}>
-      {/* Background */}
-      <div className={styles.backgroundContainer}>
-        <div className={styles.backgroundBlob1}></div>
-        <div className={styles.backgroundBlob2}></div>
-        <div className={styles.backgroundBlob3}></div>
-      </div>
+    <div
+      className={styles.container}
+      style={{
+        backgroundImage: "url('/assets/images/background.jpeg')",
+      }}
+    >
+      {/* Overlay pour le contraste */}
+      <div className="absolute inset-0 backdrop-blur-xs"></div>
 
       <div className={styles.contentWrapper}>
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className={styles.logoContainer}>
-            <i className="fas fa-robot text-white text-3xl"></i>
+          <div className="text-center mb-8">
+            <img
+              src="/assets/images/logo-ai.png"
+              alt="Agent Ai Logo"
+              className="w-14 h-14 rounded-2xl shadow-lg mb-4 mx-auto"
+            />
+            <h1 className="text-4xl font-bold text-white">
+              Agent AI <span className="text-green-400">Perfeo</span>
+            </h1>
+            <p className="text-white">Connectez-vous à votre espace</p>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900">Agent AI</h1>
-          <p className="text-gray-600">Connectez-vous à votre espace</p>
         </div>
 
         {/* Card */}
@@ -101,7 +104,7 @@ const Login = () => {
             <div className={styles.errorContainer}>
               <i className="fas fa-circle-exclamation text-red-500 mt-1"></i>
               <p className="text-sm text-red-800 flex-1">{error}</p>
-              <button onClick={() => setError('')}>
+              <button onClick={() => setError("")}>
                 <i className="fas fa-xmark text-red-400 hover:text-red-600"></i>
               </button>
             </div>
@@ -125,7 +128,7 @@ const Login = () => {
                     setCredentials({ ...credentials, username: e.target.value })
                   }
                   className={`${styles.input} ${
-                    error ? styles.inputError : ''
+                    error ? styles.inputError : ""
                   }`}
                   placeholder="Votre nom d'utilisateur"
                 />
@@ -140,7 +143,7 @@ const Login = () => {
               <div className={styles.inputContainer}>
                 <i className={`${styles.inputIcon} fas fa-lock`}></i>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   required
                   disabled={loading}
                   value={credentials.password}
@@ -148,7 +151,7 @@ const Login = () => {
                     setCredentials({ ...credentials, password: e.target.value })
                   }
                   className={`${styles.inputPassword} ${
-                    error ? styles.inputError : ''
+                    error ? styles.inputError : ""
                   }`}
                   placeholder="Votre mot de passe"
                 />
@@ -159,9 +162,7 @@ const Login = () => {
                 >
                   <i
                     className={`fas ${
-                      showPassword
-                        ? 'fa-eye-slash text-green-600'
-                        : 'fa-eye'
+                      showPassword ? "fa-eye-slash text-green-600" : "fa-eye"
                     }`}
                   ></i>
                 </button>
@@ -169,7 +170,11 @@ const Login = () => {
             </div>
 
             {/* Submit */}
-            <button type="submit" disabled={loading} className={styles.submitButton}>
+            <button
+              type="submit"
+              disabled={loading}
+              className={styles.submitButton}
+            >
               {loading ? (
                 <>
                   <i className="fas fa-spinner fa-spin"></i>
@@ -186,7 +191,7 @@ const Login = () => {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-white">
           © 2026 Perfeo Agent AI. Tous droits réservés.
         </p>
       </div>
