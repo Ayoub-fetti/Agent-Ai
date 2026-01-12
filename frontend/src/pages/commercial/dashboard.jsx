@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import { toast } from 'react-toastify';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -40,11 +41,8 @@ const CommercialDashboard = () => {
   const [selectedLead, setSelectedLead] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchCountries, setSearchCountries] = useState(['Maroc', 'France', 'Canada']);
-  const [searchResults, setSearchResults] = useState(null);
-  const [showResultsModal, setShowResultsModal] = useState(false);
-  const [searchProgress, setSearchProgress] = useState(null);
-  const [currentSearchId, setCurrentSearchId] = useState(null);
-  const [progressInterval, setProgressInterval] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState(null);
 
   useEffect(() => {
     fetchLeads();
@@ -65,6 +63,7 @@ const CommercialDashboard = () => {
       setLeads(response.data.results || []);
     } catch (error) {
       console.error('Erreur lors du chargement des leads:', error);
+      toast.error('Erreur lors du chargement des leads');
     } finally {
       setLoading(false);
     }
@@ -80,56 +79,36 @@ const CommercialDashboard = () => {
   };
 
   const handleSearchLeads = async () => {
+    if (searchCountries.length === 0) {
+      toast.warning('Veuillez sélectionner au moins un pays');
+      return;
+    }
+
     try {
       setSearching(true);
-      setSearchProgress(null);
+      setShowSearchModal(false);
       
-      // Lancer la recherche
-      const response = await api.post('/leads/search/', {
+      toast.info('Génération des leads en cours...', { autoClose: 2000 });
+      
+      const response = await api.post('/leads/generate-with-ai/', {
         countries: searchCountries,
-        max_leads_per_source: 50,
       });
       
-      const searchId = response.data.search_id;
-      setCurrentSearchId(searchId);
-      setShowSearchModal(false);
-      setShowResultsModal(true);
-      
-      // Poller la progression
-      const interval = setInterval(async () => {
-        try {
-          const progressResponse = await api.get(`/leads/search/${searchId}/progress/`);
-          const progress = progressResponse.data;
-          setSearchProgress(progress);
-          
-          // Si terminée, arrêter le polling et afficher les résultats
-          if (progress.status === 'completed' || progress.status === 'error') {
-            clearInterval(interval);
-            setProgressInterval(null);
-            
-            if (progress.results) {
-              setSearchResults(progress.results);
-            }
-            
-            // Rafraîchir les données
-            fetchLeads();
-            fetchStats();
-            setSearching(false);
-          }
-        } catch (error) {
-          console.error('Erreur récupération progression:', error);
-        }
-      }, 1000); // Poller toutes les secondes
-      
-      setProgressInterval(interval);
-      
-      // Nettoyer l'intervalle si le composant est démonté
-      return () => {
-        if (interval) clearInterval(interval);
-      };
+      if (response.data.success) {
+        toast.success(
+          `${response.data.message}\nLeads générés: ${response.data.total_generated}\nLeads créés: ${response.data.total_created}`,
+          { autoClose: 5000 }
+        );
+        
+        fetchLeads();
+        fetchStats();
+      } else {
+        toast.error(`Erreur: ${response.data.error}`);
+      }
     } catch (error) {
-      console.error('Erreur lors de la recherche:', error);
-      alert('Erreur lors de la recherche de leads');
+      console.error('Erreur lors de la génération:', error);
+      toast.error('Erreur lors de la génération de leads');
+    } finally {
       setSearching(false);
     }
   };
@@ -137,6 +116,7 @@ const CommercialDashboard = () => {
   const handleUpdateLead = async (leadId, updates) => {
     try {
       await api.patch(`/leads/${leadId}/update/`, updates);
+      toast.success('Lead mis à jour avec succès');
       fetchLeads();
       fetchStats();
       if (selectedLead?.id === leadId) {
@@ -144,7 +124,7 @@ const CommercialDashboard = () => {
       }
     } catch (error) {
       console.error('Erreur lors de la mise à jour:', error);
-      alert('Erreur lors de la mise à jour du lead');
+      toast.error('Erreur lors de la mise à jour du lead');
     }
   };
 
@@ -152,7 +132,7 @@ const CommercialDashboard = () => {
     try {
       const response = await api.post(`/leads/${leadId}/reanalyze/`);
       if (response.data.success) {
-        alert('Lead réanalysé avec succès');
+        toast.success('Lead réanalysé avec succès');
         fetchLeads();
         fetchStats();
         if (selectedLead?.id === leadId) {
@@ -162,7 +142,24 @@ const CommercialDashboard = () => {
       }
     } catch (error) {
       console.error('Erreur lors de la réanalyse:', error);
-      alert('Erreur lors de la réanalyse');
+      toast.error('Erreur lors de la réanalyse');
+    }
+  };
+
+  const handleDeleteLead = async () => {
+    if (!leadToDelete) return;
+
+    try {
+      await api.delete(`/leads/${leadToDelete}/delete/`);
+      toast.success('Lead supprimé avec succès');
+      setShowDeleteModal(false);
+      setLeadToDelete(null);
+      setSelectedLead(null);
+      fetchLeads();
+      fetchStats();
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      toast.error('Erreur lors de la suppression du lead');
     }
   };
 
@@ -185,7 +182,6 @@ const CommercialDashboard = () => {
     return 'text-blue-600';
   };
 
-  // Données pour les graphiques
   const temperatureChartData = stats ? {
     labels: ['Chaud', 'Tiède', 'Froid'],
     datasets: [{
@@ -220,10 +216,11 @@ const CommercialDashboard = () => {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setShowSearchModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                disabled={searching}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
               >
-                <i className="fas fa-search"></i>
-                Rechercher des leads
+                <i className="fas fa-magic"></i>
+                {searching ? 'Génération...' : 'Générer avec l\'IA'}
               </button>
             </div>
           </div>
@@ -421,9 +418,6 @@ const CommercialDashboard = () => {
                         {lead.project_type && (
                           <span><i className="fas fa-tag mr-1"></i>{lead.project_type}</span>
                         )}
-                        {lead.lead_type === 'marche_public' && (
-                          <span className="text-green-600"><i className="fas fa-gavel mr-1"></i>Marché Public</span>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
@@ -441,6 +435,16 @@ const CommercialDashboard = () => {
                       >
                         <i className="fas fa-eye"></i>
                       </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLeadToDelete(lead.id);
+                          setShowDeleteModal(true);
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -450,15 +454,15 @@ const CommercialDashboard = () => {
         </div>
       </div>
 
-      {/* Modal de recherche */}
+      {/* Modal de génération IA */}
       {showSearchModal && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Rechercher des Leads</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Générer des Leads avec l'IA</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pays à rechercher
+                  Pays à cibler
                 </label>
                 <div className="space-y-2">
                   {['Maroc', 'France', 'Canada'].map((country) => (
@@ -483,10 +487,10 @@ const CommercialDashboard = () => {
               <div className="flex gap-3">
                 <button
                   onClick={handleSearchLeads}
-                  disabled={searching}
+                  disabled={searching || searchCountries.length === 0}
                   className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {searching ? 'Recherche en cours...' : 'Lancer la recherche'}
+                  {searching ? 'Génération en cours...' : 'Générer avec l\'IA'}
                 </button>
                 <button
                   onClick={() => setShowSearchModal(false)}
@@ -495,6 +499,40 @@ const CommercialDashboard = () => {
                   Annuler
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation de suppression */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 backdrop-blur-sm  flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 p-3 rounded-full">
+                <i className="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Confirmer la suppression</h2>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir supprimer ce lead ? Cette action est irréversible.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteLead}
+                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              >
+                Supprimer
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setLeadToDelete(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+              >
+                Annuler
+              </button>
             </div>
           </div>
         </div>
@@ -556,30 +594,6 @@ const CommercialDashboard = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {selectedLead.email && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-gray-900">{selectedLead.email}</p>
-                  </div>
-                )}
-                {selectedLead.phone && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Téléphone</label>
-                    <p className="text-gray-900">{selectedLead.phone}</p>
-                  </div>
-                )}
-              </div>
-
-              {selectedLead.website && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Site web</label>
-                  <a href={selectedLead.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                    {selectedLead.website}
-                  </a>
-                </div>
-              )}
-
               {selectedLead.score_justification && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Justification du score</label>
@@ -604,217 +618,17 @@ const CommercialDashboard = () => {
                 >
                   Réanalyser
                 </button>
+                <button
+                  onClick={() => {
+                    setLeadToDelete(selectedLead.id);
+                    setShowDeleteModal(true);
+                  }}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                >
+                  Supprimer
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de résultats de recherche */}
-      {showResultsModal && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {searchProgress?.status === 'running' ? 'Recherche en cours...' : 'Rapport de Recherche'}
-              </h2>
-              <button
-                onClick={() => {
-                  if (progressInterval) {
-                    clearInterval(progressInterval);
-                    setProgressInterval(null);
-                  }
-                  setShowResultsModal(false);
-                  setSearchResults(null);
-                  setSearchProgress(null);
-                  setCurrentSearchId(null);
-                  setSearching(false);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <i className="fas fa-times text-2xl"></i>
-              </button>
-            </div>
-
-            {/* Barre de progression */}
-            {searchProgress && searchProgress.status === 'running' && (
-              <div className="space-y-4 mb-6">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">
-                      {searchProgress.current_source || 'Initialisation...'}
-                    </span>
-                    <span className="text-sm font-bold text-blue-600">
-                      {searchProgress.percentage}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-full rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${searchProgress.percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <p>
-                    Sources complétées: {searchProgress.completed_sources} / {searchProgress.total_sources}
-                  </p>
-                  <p>Leads trouvés jusqu'à présent: {searchProgress.leads_found}</p>
-                  {searchProgress.elapsed_seconds && (
-                    <p>Temps écoulé: {Math.round(searchProgress.elapsed_seconds)}s</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Résultats finaux */}
-            {searchResults && searchProgress?.status !== 'running' && (
-              <div className="space-y-6">
-                {/* Résumé */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-2">Résumé</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-blue-700">Leads trouvés:</span>
-                      <span className="font-bold text-blue-900 ml-2">{searchResults.total_found}</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Nouveaux créés:</span>
-                      <span className="font-bold text-green-600 ml-2">{searchResults.created}</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Mis à jour:</span>
-                      <span className="font-bold text-yellow-600 ml-2">{searchResults.updated}</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Erreurs:</span>
-                      <span className="font-bold text-red-600 ml-2">{searchResults.errors}</span>
-                    </div>
-                  </div>
-                </div>
-
-              {/* Rapport détaillé */}
-              {searchResults.search_report && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Détails des Recherches</h3>
-                  
-                  {/* Sources consultées */}
-                  {searchResults.search_report.sources_consulted && searchResults.search_report.sources_consulted.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">
-                        Sources consultées ({searchResults.search_report.sources_consulted.length})
-                      </h4>
-                      <div className="space-y-2">
-                        {searchResults.search_report.sources_consulted.map((source, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
-                            <i className="fas fa-check-circle text-green-500"></i>
-                            <span className="font-medium">{source.name}</span>
-                            <span className="text-gray-500">({source.type})</span>
-                            {source.url && (
-                              <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-auto">
-                                <i className="fas fa-external-link-alt"></i>
-                              </a>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Sources avec résultats */}
-                  {searchResults.search_report.sources_with_results && searchResults.search_report.sources_with_results.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium text-green-700 mb-2">
-                        Sources avec résultats ({searchResults.search_report.sources_with_results.length})
-                      </h4>
-                      <div className="space-y-1">
-                        {searchResults.search_report.sources_with_results.map((source, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm bg-green-50 p-2 rounded">
-                            <i className="fas fa-check-circle text-green-600"></i>
-                            <span>{source}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Sources sans résultats */}
-                  {searchResults.search_report.sources_without_results && searchResults.search_report.sources_without_results.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">
-                        Sources consultées sans résultats ({searchResults.search_report.sources_without_results.length})
-                      </h4>
-                      <div className="space-y-1">
-                        {searchResults.search_report.sources_without_results.map((source, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
-                            <i className="fas fa-info-circle text-gray-400"></i>
-                            <span>{source}</span>
-                            <span className="text-gray-500 text-xs ml-auto">Aucun lead trouvé</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Erreurs */}
-                  {searchResults.search_report.errors && searchResults.search_report.errors.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium text-red-700 mb-2">
-                        Erreurs ({searchResults.search_report.errors.length})
-                      </h4>
-                      <div className="space-y-1">
-                        {searchResults.search_report.errors.map((error, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-sm bg-red-50 p-2 rounded">
-                            <i className="fas fa-exclamation-circle text-red-600 mt-1"></i>
-                            <div>
-                              <span className="font-medium">{error.source}:</span>
-                              <span className="text-red-700 ml-2">{error.error}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Message si aucun résultat */}
-                  {searchResults.total_found === 0 && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-info-circle text-yellow-600"></i>
-                        <div>
-                          <p className="font-medium text-yellow-900">Aucun lead trouvé</p>
-                          <p className="text-sm text-yellow-700 mt-1">
-                            Des recherches ont été effectuées sur {searchResults.search_report.sources_consulted?.length || 0} source(s), 
-                            mais aucun lead GTB/GTEB n'a été trouvé pour le moment.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-                {/* Bouton de fermeture */}
-                <div className="flex justify-end pt-4 border-t">
-                  <button
-                    onClick={() => {
-                      if (progressInterval) {
-                        clearInterval(progressInterval);
-                        setProgressInterval(null);
-                      }
-                      setShowResultsModal(false);
-                      setSearchResults(null);
-                      setSearchProgress(null);
-                      setCurrentSearchId(null);
-                      setSearching(false);
-                    }}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                  >
-                    {searchProgress?.status === 'running' ? 'Annuler' : 'Fermer'}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

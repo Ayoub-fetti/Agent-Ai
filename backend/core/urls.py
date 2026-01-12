@@ -36,5 +36,7 @@ urlpatterns = [
     path('leads/<int:lead_id>/coordinates/', views.update_lead_coordinates, name='update_lead_coordinates'),
     path('client-locations/', views.client_locations, name='client_locations'),
     path('client-locations/<int:location_id>/', views.client_location_detail, name='client_location_detail'),
+    path('leads/generate-with-ai/', views.generate_leads_with_ai, name='generate_leads_with_ai'),
+    path('leads/<int:lead_id>/delete/', views.delete_lead, name='delete_lead'),
 
 ]

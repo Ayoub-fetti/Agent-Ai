@@ -19,6 +19,8 @@ import uuid
 import threading
 from .services.knowledge_base_service import KnowledgeBaseService
 from .models import ClientLocation
+from .services.ai_lead_generator import AILeadGenerator
+
 
 
 
@@ -680,3 +682,99 @@ def client_location_detail(request, location_id):
             
     except ClientLocation.DoesNotExist:
         return Response({'error': 'Location not found'}, status=404)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_leads_with_ai(request):
+    """Génère des leads via IA"""
+    try:
+        countries = request.data.get('countries', ['Maroc', 'France', 'Canada'])
+        sectors = request.data.get('sectors', None)
+        
+        generator = AILeadGenerator()
+        result = generator.generate_leads(countries=countries, sectors=sectors)
+        
+        if not result.get('success'):
+            return Response({
+                'success': False,
+                'error': result.get('error'),
+                'message': 'Erreur lors de la génération des leads'
+            }, status=400)
+        
+        # Créer les leads dans la base de données
+        leads_created = []
+        leads_data = result.get('leads', [])
+        
+        lead_service = LeadService()
+        
+        for lead_data in leads_data:
+            try:
+                # Mapper les données IA vers le format Lead
+                normalized_lead = {
+                    'lead_type': 'entreprise',
+                    'title': f"Lead GTB/GTEB - {lead_data.get('nom_entreprise', '')}",
+                    'description': lead_data.get('besoin_specifique', ''),
+                    'organization_name': lead_data.get('nom_entreprise', ''),
+                    'city': lead_data.get('ville', ''),
+                    'country': lead_data.get('pays', 'Maroc'),
+                    'sector': lead_data.get('secteur', ''),
+                    'project_type': lead_data.get('type_projet', 'GTB'),
+                    'budget': lead_data.get('budget_estime'),
+                    'score': lead_data.get('potentiel', 50),
+                    'score_justification': lead_data.get('justification', ''),
+                    'keywords_found': ['GTB', 'GTEB'],
+                    'raw_data': lead_data
+                }
+                
+                # Déterminer la température
+                score = normalized_lead['score']
+                if score >= 70:
+                    normalized_lead['temperature'] = 'chaud'
+                elif score >= 40:
+                    normalized_lead['temperature'] = 'tiede'
+                else:
+                    normalized_lead['temperature'] = 'froid'
+                
+                # Créer le lead
+                lead, created = lead_service._create_or_update_lead(normalized_lead)
+                
+                leads_created.append({
+                    'id': lead.id,
+                    'organization_name': lead.organization_name,
+                    'score': lead.score,
+                    'temperature': lead.temperature,
+                    'created': created
+                })
+            
+            except Exception as e:
+                logger.error(f"Erreur création lead: {e}")
+                continue
+        
+        return Response({
+            'success': True,
+            'message': f'{len(leads_created)} leads générés avec succès',
+            'total_generated': len(leads_data),
+            'total_created': len(leads_created),
+            'leads': leads_created
+        })
+    
+    except Exception as e:
+        logger.error(f"Erreur génération leads IA: {e}")
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+        
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_lead(request, lead_id):
+    """Supprime un lead"""
+    try:
+        lead = Lead.objects.get(id=lead_id)
+        lead.delete()
+        return Response({'success': True, 'message': 'Lead supprimé avec succès'})
+    except Lead.DoesNotExist:
+        return Response({'error': 'Lead non trouvé'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)

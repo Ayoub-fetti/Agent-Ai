@@ -4,7 +4,6 @@ from typing import List, Dict, Any, Tuple
 from datetime import datetime
 from django.utils import timezone
 from ..models import Lead
-from .lead_search import LeadSearchService
 from .lead_normalizer import LeadNormalizer
 from .lead_enricher import LeadEnricher
 from .lead_scorer import LeadScorer
@@ -16,7 +15,6 @@ class LeadService:
     """Service principal pour la gestion des leads GTB/GTEB"""
     
     def __init__(self):
-        self.search_service = LeadSearchService()
         self.normalizer = LeadNormalizer()
         self.enricher = LeadEnricher()
         self.llm_client = LLMClient()
