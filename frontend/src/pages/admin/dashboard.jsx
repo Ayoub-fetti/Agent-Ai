@@ -212,7 +212,7 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="bg-white rounded-xl shadow p-6">
-            <div className="text-gray-500 text-sm">Total Tickets</div>
+            <div className="text-gray-500 text-sm">Total Tickets en attente</div>
             <div className="text-3xl font-bold text-gray-800">{stats?.tickets.total || 0}</div>
             <div className="text-yellow-500 text-sm mt-2">
               {stats?.tickets.pending || 0} en attente
